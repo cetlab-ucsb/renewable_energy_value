@@ -1,0 +1,11 @@
+technology,cost_type,coalHC,coalLC,coalLC_solarLC20p,coalLC_windLC20p,coalLC_windLC20p
+ct,capital,650,650,650,650,650
+ccgt,capital,1230,1230,1230,1230,1230
+coal,capital,2890,1000,1000,1000,1000
+wind,capital,1230,1230,1230,984,984
+solarPV,capital,1030,1030,824,1030,824
+ct,om,5.26,5.26,5.26,5.26,5.26
+ccgt,om,6.31,6.31,6.31,6.31,6.31
+coal,om,23,23,23,23,23
+wind,om,35,35,35,35,35
+solarPV,om,25,25,25,25,25
