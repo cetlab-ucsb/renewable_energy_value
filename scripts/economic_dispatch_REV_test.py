@@ -62,7 +62,9 @@ outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the 
 outage_rate_diesel = 0.2 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_other = 0.3 # These outage rates need to match the ones from the conventional buildout algorithm
 derating_outages_conventional_gen = "yes"
-days_to_run = 2
+#days_to_run = 2
+start_day = 1
+end_day = 2
 
 
 '''
@@ -274,7 +276,7 @@ for sc in range(len(scenarios)):
     charge_annual_stor_battery = 0
     
     #d = 1
-    for d in range(1, days_to_run + 1):
+    for d in range(start_day, end_day + 1):
         print "Solving step " + str(d)
         ## Load
         load_ts = load.loc[load['Day'] == d]
@@ -645,7 +647,10 @@ for sc in range(len(scenarios)):
         discharge_all_stor_battery_ts = pd.DataFrame(discharge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Discharge'])
         charge_all_stor_battery_ts = pd.DataFrame(charge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Charge'])
         
-        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts], axis = 1)
+        load_ts_df = test = pd.DataFrame.from_dict(load_ts, orient='index', dtype=None) # Convert load dictionary to dataframe
+        load_ts_df.columns = ['Load']
+        
+        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts, load_ts_df], axis = 1)
         
         dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_gen_ts) #, ignore_index=True) # Add the day's dispatch to the annual result
         
