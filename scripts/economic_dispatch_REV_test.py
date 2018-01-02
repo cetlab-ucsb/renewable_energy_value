@@ -52,6 +52,7 @@ genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var c
 genHYDRO_minGen_csv = "hydro_min_gen.csv"
 genHYDRO_maxEnergy_csv = "hydro_max_energy.csv"
 genMUSTRUN_csv = "mustrun_gen.csv" # must run generators like nuclear and run-of-river hydro that have a constant output through the timeseries (e.g. day)
+storBATTERY_csv = "battery_storage.csv"
 VoLL = 100000 # Value of lost load
 all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
 coal_low_cap_cost = 'yes'
@@ -61,7 +62,8 @@ outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the 
 outage_rate_diesel = 0.2 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_other = 0.3 # These outage rates need to match the ones from the conventional buildout algorithm
 derating_outages_conventional_gen = "yes"
-days_to_run = 1
+days_to_run = 2
+
 
 '''
 #############################################
@@ -75,6 +77,15 @@ load = pd.read_csv(inputPath + load_csv, sep=',')
 
 ## Read the VRE capacities for all scenarios
 # genVRE_allScenarios = pd.read_csv(inputPathVRE + str(yearBase) + "_RE_capacity_all_scenarios" + ".csv", sep=',')
+
+## USER SPECIFIED PARAMETERS
+genCOAL_minGen_cf = 0.70 ## For now, the entire COAL fleet will have the same minimum CF, derated by the outage rate.
+genGASCCGT_minGen_cf = 0.50 ## For now, the entire CCGT GAS fleet will have the same minimum CF.
+genOTHER_minGen_cf = 0.70 ## For now, the entire OTHER fleet will have the same minimum CF.
+genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same minimum CF. - not used
+genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
+storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
+storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
 
 '''
 #############################################
@@ -110,7 +121,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min"    
+scenario_suffix_operation = "_70min_test"    
     
 for sc in range(len(scenarios)):
     
@@ -132,12 +143,18 @@ for sc in range(len(scenarios)):
     ## NEW CONVENTIONAL GENERATOR BUILDOUT
     genCONV_toAdd = pd.read_csv(inputPathNEWCONV_capacity + str(yearAnalysis) + "_conventional_capacity_" + scenarios[sc] + scenario_suffix + ".csv", sep=',')
     
+    ## Battery storage
+    storBATTERY_input = pd.read_csv(inputPath + storBATTERY_csv, sep=',')  # storage in this case does not include hydro. Only rechargeable storage - batteries, PHS
+    #storBATTERY_input = storBATTERY[['storage', 'stor_capacity', 'var_cost', 'type']] # storage in this case does not include hydro. Only rechargeable storage - batteries, PHS
+    
     ## All generators
     genALL_input = pd.read_csv(inputPath + genALL_input_csv, sep=',')
     # Add the VRE generators for the current scenario
     genALL_input = genALL_input.append(genVRE_toAdd_melt, ignore_index=True)
     # Add the new conventional generators for the current scenario
     genALL_input = genALL_input.append(genCONV_toAdd, ignore_index=True)
+    # Add the new battery storage 
+    #genALL_input = genALL_input.append(genBATTERY_toAdd, ignore_index=True) # Not including storage as a generator
     
     ## Derating conventional generator capacity based on outage rates
     if derating_outages_conventional_gen == "yes":
@@ -147,12 +164,22 @@ for sc in range(len(scenarios)):
         genALL_input.ix[genALL_input.type == 'gas_ct', 'gen_capacity'] = genALL_input.ix[genALL_input.type == 'gas_ct', 'gen_capacity'] * (1-outage_rate_gas_ct)
         genALL_input.ix[genALL_input.type == 'diesel', 'gen_capacity'] = genALL_input.ix[genALL_input.type == 'diesel', 'gen_capacity'] * (1-outage_rate_diesel)
     
-    #Initialize the generator list. This is used for the generator index.
+    # GENERATOR LIST. This is used for the generator index.
     genALL  = genALL_input['generator'].tolist() 
-    # Variable cost
+    # Thermal and other dispatchable generators (other than hydro)
+    genCOAL = genALL_input[genALL_input['type'].isin(['coal'])]['generator'].tolist()
+    genGASCCGT = genALL_input[genALL_input['type'].isin(['gas_ccgt'])]['generator'].tolist()
+    genOTHER = genALL_input[genALL_input['type'].isin(['other'])]['generator'].tolist()
+    genGASCT = genALL_input[genALL_input['type'].isin(['gas_ct'])]['generator'].tolist()
+    genDIESEL = genALL_input[genALL_input['type'].isin(['diesel'])]['generator'].tolist()
+    
+    # VARIABLE COST
     genALL_varCost = genALL_input[['generator', 'var_cost']]
     genALL_varCost.set_index('generator', inplace=True)
     genALL_varCost = genALL_varCost.to_dict()['var_cost']
+
+    
+    # GENERATOR CAPACITY
     # Capacity - # All generators
     genALL_genCapacity = genALL_input[['generator', 'gen_capacity']]
     genALL_genCapacity.set_index('generator', inplace=True)
@@ -190,6 +217,7 @@ for sc in range(len(scenarios)):
     genMUSTRUN_genCapacity.set_index('generator', inplace=True)
     genMUSTRUN_genCapacity = genMUSTRUN_genCapacity.to_dict()['gen_capacity']
     
+    ## OTHER GENERATOR DATA
     ## Hydro generation
     genHYDRO_minGen_all = pd.read_csv(inputPath + genHYDRO_minGen_csv, sep=',')
     genHYDRO_maxEnergy_all = pd.read_csv(inputPath + genHYDRO_maxEnergy_csv, sep=',')
@@ -197,12 +225,25 @@ for sc in range(len(scenarios)):
     ## Must Run generation
     genMUSTRUN_all = pd.read_csv(inputPath + genMUSTRUN_csv, sep=',')
     
-    ## Thermal and other dispatchable generators (other than hydro)
-    genCOAL = genALL_input[genALL_input['type'].isin(['coal'])]['generator'].tolist()
-    genGASCCGT = genALL_input[genALL_input['type'].isin(['gas_ccgt'])]['generator'].tolist()
-    genOTHER = genALL_input[genALL_input['type'].isin(['other'])]['generator'].tolist()
-    genGASCT = genALL_input[genALL_input['type'].isin(['gas_ct'])]['generator'].tolist()
-    genDIESEL = genALL_input[genALL_input['type'].isin(['diesel'])]['generator'].tolist()
+    ## BATTERY STORAGE
+    # BATTERY STORAGE LIST. This is used for the storage index.
+    storBATTERY = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])]['storage'].tolist()
+    
+    # BATTERY STORAGE VARIABLE COST
+    storBATTERY_varCost = storBATTERY_input[['storage', 'var_cost']]
+    storBATTERY_varCost.set_index('storage', inplace=True)
+    storBATTERY_varCost = storBATTERY_varCost.to_dict()['var_cost']
+    
+    # BATTERY STORAGE POWER CAPACITY
+    storBATTERY_storCapacity = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_capacity']] # type can be bat_storage or phs_storage if PHS has different constraints
+    storBATTERY_storCapacity.set_index('storage', inplace=True)
+    storBATTERY_storCapacity = storBATTERY_storCapacity.to_dict()['stor_capacity']
+    
+    # BATERY STORAGE ENERGY CAPACTY
+    storBATTERY_storEnergy = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_energy']] # type can be bat_storage or phs_storage if PHS has different constraints
+    storBATTERY_storEnergy.set_index('storage', inplace=True)
+    storBATTERY_storEnergy = storBATTERY_storEnergy.to_dict()['stor_energy']
+
     
     
     '''
@@ -229,12 +270,18 @@ for sc in range(len(scenarios)):
     dispatch_annual_gen_nuclear = 0
     dispatch_cost_annual = 0
     
+    discharge_annual_stor_battery = 0
+    charge_annual_stor_battery = 0
+    
     #d = 1
     for d in range(1, days_to_run + 1):
         print "Solving step " + str(d)
         ## Load
         load_ts = load.loc[load['Day'] == d]
         timepoints = load_ts['Timepoint'].tolist() # Initialize the timepoints from the load data frame. This is used for the Timepoint index
+        timepoints_minus_first = timepoints[1:] # All but the first element of the timepoints
+        timepoints_first = [timepoints[0]] # Just the first timepoint
+        timepoints_last = [timepoints[-1]] # Just the last timepoint
         load_ts.drop(['Day', 'dateTime'], axis=1, inplace=True) # Keep only the timepoint and load columns
         load_ts.set_index('Timepoint', inplace=True)
         load_ts = load_ts.round(0)
@@ -296,6 +343,9 @@ for sc in range(len(scenarios)):
         '''
         # These will be indexes to some parameters, variables and constraints
         model.TIMEPOINTS = Set(initialize=timepoints)
+        model.TIMEPOINTSMINUSFIRST = Set(initialize=timepoints_minus_first)
+        model.TIMEPOINTSFIRST = Set(initialize=timepoints_first)
+        model.TIMEPOINTSLAST = Set(initialize=timepoints_last)
         model.GEN = Set(initialize=genALL) # Initialize with the list of all generators
         model.GENHYDRO = Set(within=model.GEN, initialize=genHYDRO) # Initialize with the HYDRO generator list ## Can use initialize=set(proj for proj in hydroEnergy)
         model.GENVRE = Set(within=model.GEN, initialize=genVRE) # Initialize with the VRE generator list
@@ -305,6 +355,7 @@ for sc in range(len(scenarios)):
         model.GENOTHER = Set(within=model.GEN, initialize=genOTHER) # Initialize with the OTHER generator list
         model.GENGASCT = Set(within=model.GEN, initialize=genGASCT) # Initialize with the GAS CT generator list
         model.GENDIESEL = Set(within=model.GEN, initialize=genDIESEL) # Initialize with the DIESEL generator list
+        model.STORBATTERY = Set(initialize=storBATTERY) # Initialize with the BATTERY STORAGE generator list
         
         
         '''
@@ -313,15 +364,9 @@ for sc in range(len(scenarios)):
         #############################################
         '''
         
-        genCOAL_minGen_cf = 0.70 ## For now, the entire COAL fleet will have the same minimum CF, derated by the outage rate.
-        genGASCCGT_minGen_cf = 0.50 ## For now, the entire CCGT GAS fleet will have the same minimum CF.
-        genOTHER_minGen_cf = 0.70 ## For now, the entire OTHER fleet will have the same minimum CF.
-        genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same minimum CF. - not used
-        genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
-        
         model.load_mw = Param(model.TIMEPOINTS, default=load_ts)
         model.dispatch_cost = Param(model.GEN, default=genALL_varCost, doc="dispatch cost in $/MWh")
-        model.gen_capacity = Param(model.GEN, default=genALL_genCapacity)
+        model.gen_capacity = Param(model.GEN, default=genALL_genCapacity) # Max capacity of generators
         model.gen_min_cf_hydro = Param(model.GENHYDRO, default=genHYDRO_minGen_cf_ts) # Minimum generation hydro
         model.gen_energy_hydro = Param(model.GENHYDRO, default=genHYDRO_maxEnergy_ts) # Max energy hydro
         model.gen_cf_vre = Param(model.TIMEPOINTS, model.GENVRE, default=genVRE_cf_ts) # Capacity factors for VRE
@@ -332,15 +377,24 @@ for sc in range(len(scenarios)):
         model.gen_min_cf_gas_ct = Param(model.GENGASCT, default=genGASCT_minGen_cf) # Minimum generation gas ct - not used
         model.gen_min_cf_gas_diesel = Param(model.GENDIESEL, default=genDIESEL_minGen_cf) # Minimum generation diesel - not used
         
+        model.stor_capacity = Param(model.STORBATTERY, default=storBATTERY_storCapacity) # Max capacity of battery storage
+        model.stor_energy = Param(model.STORBATTERY, default=storBATTERY_storEnergy) # Max energy of battery storage
+        model.stor_initial_soc = Param(model.STORBATTERY, default=storBATTERY_initial_soc) # Initial state of charge of battery
+        
         '''
         #############################################
         ## DECISION VARIABLES ##
         #############################################
         '''
         
-        model.DispatchMW = Var(model.TIMEPOINTS, model.GEN, within=NonNegativeReals)
-        model.uc = Var(model.GEN, within=Binary)
-        model.load_unserved_mw = Var(model.TIMEPOINTS, within=NonNegativeReals)
+        model.DispatchMW = Var(model.TIMEPOINTS, model.GEN, within=NonNegativeReals) # dispactH of generators
+        model.uc = Var(model.GEN, within=Binary) # unit commitment of generators
+        model.load_unserved_mw = Var(model.TIMEPOINTS, within=NonNegativeReals) # unserved energy
+        model.sd = Var(model.TIMEPOINTS, model.STORBATTERY, within = Binary) # flag for discharging or dispatch
+        model.sc = Var(model.TIMEPOINTS, model.STORBATTERY, within = Binary) # flag for charging
+        model.DischargeMW = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # discharge from storage
+        model.ChargeMW = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # charge into storage
+        model.EnergyStorageMWh = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # energy level of storage
         
         '''
         #############################################
@@ -371,7 +425,7 @@ for sc in range(len(scenarios)):
         
         # Dispatch = load
         def Conservation_Of_Energy_rule(mod, t):
-            return sum(mod.DispatchMW[t, gen] for gen in mod.GEN) == mod.load_mw[t] - mod.load_unserved_mw[t]
+            return sum(mod.DispatchMW[t, gen] for gen in mod.GEN) + sum(mod.DischargeMW[t, stor] for stor in mod.STORBATTERY) == mod.load_mw[t] + sum(mod.ChargeMW[t, stor] for stor in mod.STORBATTERY) - mod.load_unserved_mw[t]
         model.Conservation_Of_Energy = Constraint(model.TIMEPOINTS, rule=Conservation_Of_Energy_rule)
         
         # Dispatch <= max capacity of each generator
@@ -423,6 +477,42 @@ for sc in range(len(scenarios)):
         def Enforce_MUSTRUN_Dispatch_rule(mod, t, gen):
             return mod.DispatchMW[t, gen] == mod.gen_cf_mustrun[gen] * mod.gen_capacity[gen]
         model.Enforce_MUSTRUN_Dispatch = Constraint(model.TIMEPOINTS, model.GENMUSTRUN, rule=Enforce_MUSTRUN_Dispatch_rule)
+        
+        # Discharge <= max capacity of each battery storage (includes batteries, pumped hydro)
+        def Enforce_Max_Storage_Discharge_Limit_rule(mod, t, stor):
+            return mod.DischargeMW[t, stor] <= mod.stor_capacity[stor] * mod.sd[t, stor]
+        model.Enforce_Max_Storage_Discharge_Limit = Constraint(model.TIMEPOINTS, model.STORBATTERY, rule=Enforce_Max_Storage_Discharge_Limit_rule)    
+        
+        # Charge <= max capacity of each battery storage (includes batteries, pumped hydro)
+        def Enforce_Max_Storage_Charge_Limit_rule(mod, t, stor):
+            return mod.ChargeMW[t, stor] <= mod.stor_capacity[stor] * mod.sc[t, stor]
+        model.Enforce_Max_Storage_Charge_Limit = Constraint(model.TIMEPOINTS, model.STORBATTERY, rule=Enforce_Max_Storage_Charge_Limit_rule)  
+        
+        # Battery energy <= max energy capacity of battery storage
+        def Enforce_Storage_Energy_Limit_rule(mod, t, stor):
+            return mod.EnergyStorageMWh[t, stor] <= mod.stor_energy[stor]
+        model.Enforce_Storage_Energy_Limit = Constraint(model.TIMEPOINTS, model.STORBATTERY, rule=Enforce_Storage_Energy_Limit_rule)
+        
+        # Battery energy accounting
+        def Enforce_Storage_Energy_Accounting_rule(mod, t, stor):
+            return mod.EnergyStorageMWh[t, stor] == mod.EnergyStorageMWh[(t-1), stor] + storBATTERY_efficiency * mod.ChargeMW[t, stor] - mod.DischargeMW[t, stor]
+        model.Enforce_Storage_Energy_Accounting = Constraint(model.TIMEPOINTSMINUSFIRST, model.STORBATTERY, rule=Enforce_Storage_Energy_Accounting_rule)
+        
+        # Battery energy initializing state of charge
+        def Enforce_Storage_Energy_First_SOC_rule(mod, t, stor):
+            return mod.EnergyStorageMWh[t, stor] == mod.stor_energy[stor] * mod.stor_initial_soc[stor]
+        model.Enforce_Storage_Energy_First_SOC = Constraint(model.TIMEPOINTSFIRST, model.STORBATTERY, rule=Enforce_Storage_Energy_First_SOC_rule)
+        
+        # Battery energy last state of charge (same as first state of charge)
+        def Enforce_Storage_Energy_Last_SOC_rule(mod, t, stor):
+            return mod.EnergyStorageMWh[t, stor] == mod.stor_energy[stor] * mod.stor_initial_soc[stor]
+        model.Enforce_Storage_Energy_Last_SOC = Constraint(model.TIMEPOINTSLAST, model.STORBATTERY, rule=Enforce_Storage_Energy_Last_SOC_rule)
+        
+        def Enforce_Storage_Charge_Discharge_Exclusivity_rule(mod, t, stor):
+            return mod.sc[t, stor] + mod.sd[t, stor] <= 1
+        model.Enforce_Storage_Charge_Discharge_Exclusivity = Constraint(model.TIMEPOINTS, model.STORBATTERY, rule=Enforce_Storage_Charge_Discharge_Exclusivity_rule)
+        
+                
         
         
         '''
@@ -522,6 +612,27 @@ for sc in range(len(scenarios)):
         #dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_ts, ignore_index=True) # Add the day's dispatch to the annual result
         dispatch_annual_gen_other = np.around(dispatch_annual_gen_other + dispatch_other_ts.sum(axis=1).sum(axis=0), decimals = 2) # Total annual generation
         
+        ## DISCHARGE OF BATTERY STORAGE
+        discharge_stor_battery_ts = pd.DataFrame(index = timepoints)
+        for p in storBATTERY:
+            discharge_ts_stor = [model_instance.DischargeMW[t,p].value for t in timepoints]
+            discharge_ts_stor_df = pd.DataFrame({p : discharge_ts_stor}, index = timepoints)
+            # dispatch_ts = dispatch_ts.concat(dispatch_ts_gen_df, axis = 1)
+            discharge_stor_battery_ts[p] = discharge_ts_stor_df
+        #dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_ts, ignore_index=True) # Add the day's dispatch to the annual result
+        discharge_annual_stor_battery = np.around(discharge_annual_stor_battery + discharge_stor_battery_ts.sum(axis=1).sum(axis=0), decimals = 2) # Total annual generation    
+        
+        ## CHARGE OF BATTERY STORAGE
+        charge_stor_battery_ts = pd.DataFrame(index = timepoints)
+        for p in storBATTERY:
+            charge_ts_stor = [model_instance.ChargeMW[t,p].value for t in timepoints]
+            charge_ts_stor_df = pd.DataFrame({p : charge_ts_stor}, index = timepoints)
+            # dispatch_ts = dispatch_ts.concat(dispatch_ts_gen_df, axis = 1)
+            charge_stor_battery_ts[p] = charge_ts_stor_df * -1
+        #dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_ts, ignore_index=True) # Add the day's dispatch to the annual result
+        charge_annual_stor_battery = np.around(charge_annual_stor_battery + charge_stor_battery_ts.sum(axis=1).sum(axis=0), decimals = 2) # Total annual generation    
+
+        
         ## SUMMARY DISPATCH OF ALL GENERATORS FOR THE DAY
         non_fossil_generators = ["HYDRO-STORAGE", "HYDRO-ROR", "NUCLEAR", "HYDRO-PONDAGE", "solarPV", "wind"]
         dispatch_non_fossil_ts = dispatch_all_ts[non_fossil_generators] # Choose all the non-fossil generator columns
@@ -530,9 +641,13 @@ for sc in range(len(scenarios)):
         dispatch_all_gas_ct_ts = pd.DataFrame(dispatch_gas_ct_ts.sum(axis=1), columns = ['Gas-CT'])
         dispatch_all_diesel_ts = pd.DataFrame(dispatch_diesel_ts.sum(axis=1), columns = ['Diesel'])
         dispatch_all_other_ts = pd.DataFrame(dispatch_other_ts.sum(axis=1), columns = ['Other'])
-        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts], axis = 1)
         
-        dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_gen_ts, ignore_index=True) # Add the day's dispatch to the annual result
+        discharge_all_stor_battery_ts = pd.DataFrame(discharge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Discharge'])
+        charge_all_stor_battery_ts = pd.DataFrame(charge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Charge'])
+        
+        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts], axis = 1)
+        
+        dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_gen_ts) #, ignore_index=True) # Add the day's dispatch to the annual result
         
         ## Annual dispatch for Nuclear and Hydro
         dispatch_annual_gen_hydro = np.around(dispatch_annual_gen_hydro + dispatch_non_fossil_ts[['HYDRO-STORAGE', 'HYDRO-ROR', 'HYDRO-PONDAGE']].sum(axis=1).sum(axis=0), decimals = 2) 
@@ -565,19 +680,27 @@ for sc in range(len(scenarios)):
     potential_gen_wind = capacity_wind * genVRE_all['wind'].sum()
     potential_gen_vre = potential_gen_solarPV + potential_gen_wind
     
+    ## BATTERY STORAGE
+    battery_storage_capacity = storBATTERY_input['stor_capacity'][storBATTERY_input['type']=='bat_storage'].sum()
+    battery_storage_energy = storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
+    
     ## SUMMARY TABLE
     scenarioSummary = pd.DataFrame([[scenarios[sc] + scenario_suffix + scenario_suffix_operation, dispatch_cost_annual, dispatch_annual_gen_all,
                                      potential_gen_vre, dispatch_annual_gen_vre, dispatch_annual_gen_solarPV, dispatch_annual_gen_wind,
                                       dispatch_annual_gen_coal, dispatch_annual_gen_gas_ccgt, dispatch_annual_gen_gas_ct,
                                      dispatch_annual_gen_diesel, dispatch_annual_gen_other, dispatch_annual_gen_hydro, dispatch_annual_gen_nuclear,
+                                     discharge_annual_stor_battery, charge_annual_stor_battery,
                                      new_capacity_coal, new_capacity_gas_ccgt, new_capacity_gas_ct, 
-                                     capacity_vre, capacity_solarPV, capacity_wind, strftime("%Y-%m-%d %H:%M:%S")]], 
+                                     capacity_vre, capacity_solarPV, capacity_wind, 
+                                     battery_storage_capacity, battery_storage_capacity, strftime("%Y-%m-%d %H:%M:%S")]], 
                                         columns = ["scenario", "dispatch_cost", "ann_gen_total_MWh", 
                                         "ann_gen_vre_nocurt_MWh", "ann_gen_vre_MWh", "ann_gen_solarPV_MWh", "ann_gen_wind_MWh",
                                         "ann_gen_coal_MWh", "ann_gen_gas_ccgt_MWh", "ann_gen_gas_ct_MWh", 
                                         "ann_gen_diesel_MWh", "ann_gen_other_MWh", "ann_gen_hydro_MWh", "ann_gen_nuclear_MWh",
+                                        "ann_discharge_bat_storage_MWh", "ann_charge_bat_storage_MWh",
                                         "new_capacity_coal_MW", "new_capacity_gas_ccgt_MW", "new_capacity_gas_ct_MW", 
-                                        "capacity_vre_MW", "capacity_solarPV_MW", "capacity_wind_MW", "date_time"])
+                                        "capacity_vre_MW", "capacity_solarPV_MW", "capacity_wind_MW", 
+                                        "capacity_bat_storage_MW", "energy_bat_storage_MWh", "date_time"])
     
 
 
