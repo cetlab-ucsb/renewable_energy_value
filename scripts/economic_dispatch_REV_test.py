@@ -65,6 +65,7 @@ derating_outages_conventional_gen = "yes"
 #days_to_run = 2
 start_day = 1
 end_day = 2
+num_lookahead_days = 1 # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
 
 
 '''
@@ -123,7 +124,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test"    
+scenario_suffix_operation = "_70min_test2"    
     
 for sc in range(len(scenarios)):
     
@@ -275,12 +276,20 @@ for sc in range(len(scenarios)):
     discharge_annual_stor_battery = 0
     charge_annual_stor_battery = 0
     
+    # Set imbalance in allocated/available hydro storage energy and actual dispatched energy as zero
+    genHYDRO_maxEnergy_available_dispatched_diff = 0
+    
     #d = 1
     for d in range(start_day, end_day + 1):
         print "Solving step " + str(d)
+        
+        ## Days to be included for optimization step: Current day + lookahead days
+        d_all = range(d, (d + num_lookahead_days + 1))
         ## Load
-        load_ts = load.loc[load['Day'] == d]
-        timepoints = load_ts['Timepoint'].tolist() # Initialize the timepoints from the load data frame. This is used for the Timepoint index
+        load_ts = load.loc[load['Day'].isin(d_all)]
+        # load_ts = load.loc[load['Day'] == d] # DELETE
+        timepoints = load_ts['Timepoint'].tolist() # Initialize the timepoints from the load data frame. This is used for the Timepoint index for the whole optimization problem
+        timepoints_realtime = load_ts.loc[load['Day'] == d]['Timepoint'].tolist() # Initialize the timepoints from the load data frame. This is used for the Timepoint index for only realtime dispatch e.g. current day
         timepoints_minus_first = timepoints[1:] # All but the first element of the timepoints
         timepoints_first = [timepoints[0]] # Just the first timepoint
         timepoints_last = [timepoints[-1]] # Just the last timepoint
@@ -291,18 +300,19 @@ for sc in range(len(scenarios)):
         
         ## Hydro generation and energy limit
         # Min Gen
-        genHYDRO_minGen_cf_ts = genHYDRO_minGen_all.loc[genHYDRO_minGen_all['Day'] == d]
+        genHYDRO_minGen_cf_ts = genHYDRO_minGen_all.loc[genHYDRO_minGen_all['Day'].isin(d_all)]
         genHYDRO_minGen_cf_ts.drop(['Day'], axis=1, inplace=True)
         genHYDRO = genHYDRO_minGen_cf_ts.columns.values.tolist()
-        genHYDRO_minGen_cf_ts = genHYDRO_minGen_cf_ts.T.to_dict().itervalues().next() # Take the transpose of the dataframe (in this case one row), then convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
+        genHYDRO_minGen_cf_ts = pd.DataFrame(genHYDRO_minGen_cf_ts.mean(axis=0)) # mean of min gen across current and lookahead days
+        genHYDRO_minGen_cf_ts = genHYDRO_minGen_cf_ts.to_dict().itervalues().next() #  convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
         # Max Energy
-        genHYDRO_maxEnergy_ts = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d]
+        genHYDRO_maxEnergy_ts = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'].isin(d_all)]
         genHYDRO_maxEnergy_ts.drop(['Day'], axis=1, inplace=True)
-        genHYDRO_maxEnergy_ts = genHYDRO_maxEnergy_ts.T.to_dict().itervalues().next() # Take the transpose of the dataframe (in this case one row), then convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
-        
+        genHYDRO_maxEnergy_ts = pd.DataFrame(genHYDRO_maxEnergy_ts.sum(axis=0)) + genHYDRO_maxEnergy_available_dispatched_diff # sum of max energy across current and lookahead days minus imbalance between allocated and dispatched for previous day
+        genHYDRO_maxEnergy_ts = genHYDRO_maxEnergy_ts.to_dict().itervalues().next() # convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
         
         ## VRE generation
-        genVRE_cf_ts = genVRE_all.loc[genVRE_all['Day'] == d] # Select all the rows for a particular day in the loop
+        genVRE_cf_ts = genVRE_all.loc[genVRE_all['Day'].isin(d_all)] # Select all the rows for a particular day in the loop
         genVRE_cf_ts.drop(['Day', 'dateTime'], axis=1, inplace=True) # Drop all columns except timepoints and VRE generators
         genVRE = genVRE_cf_ts.columns.values[1:].tolist() # List of VRE generators
         genVRE_cf_ts_melt = pd.melt(genVRE_cf_ts, id_vars=['Timepoint'], value_vars=genVRE) # Melt the table with Timepoints and VRE generators
@@ -311,10 +321,12 @@ for sc in range(len(scenarios)):
         
         
         ## Must run generation
-        genMUSTRUN_cf_ts = genMUSTRUN_all.loc[genMUSTRUN_all['Day'] == d]
+        genMUSTRUN_cf_ts = genMUSTRUN_all.loc[genMUSTRUN_all['Day'].isin(d_all)]
         genMUSTRUN_cf_ts.drop(['Day'], axis=1, inplace=True)
         genMUSTRUN = genMUSTRUN_cf_ts.columns.values.tolist()
-        genMUSTRUN_cf_ts = genMUSTRUN_cf_ts.T.to_dict().itervalues().next() # Take the transpose of the dataframe (in this case one row), then convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
+        genMUSTRUN_cf_ts = pd.DataFrame(genMUSTRUN_cf_ts.mean(axis=0)) # mean of min gen across current and lookahead days
+        genMUSTRUN_cf_ts = genMUSTRUN_cf_ts.to_dict().itervalues().next() # convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
+        # genMUSTRUN_cf_ts = genMUSTRUN_cf_ts.T.to_dict().itervalues().next() # Old Code before averaging: Take the transpose of the dataframe (in this case one row), then convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
         
         ## TEST CODE
         '''
@@ -544,6 +556,10 @@ for sc in range(len(scenarios)):
         ## RESULTS PROCESSING ##
         #############################################
         '''
+        
+        ## TIMEPOINTS FOR ONLY CURRENT DAY OR REALTIME DISPATCH WITHOUT LOOKAHEAD 
+        timepoints = timepoints_realtime # for now, just change timepoints to timepoints_realtime. timepoints index will reset at the beginning of the loop.
+        
         ## DISPATCH OF ALL GENERATORS
         #dispatch_all_ts = pd.DataFrame({'Day': d}, index = timepoints)
         dispatch_all_ts = pd.DataFrame(index = timepoints)
@@ -647,8 +663,9 @@ for sc in range(len(scenarios)):
         discharge_all_stor_battery_ts = pd.DataFrame(discharge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Discharge'])
         charge_all_stor_battery_ts = pd.DataFrame(charge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Charge'])
         
-        load_ts_df = test = pd.DataFrame.from_dict(load_ts, orient='index', dtype=None) # Convert load dictionary to dataframe
+        load_ts_df = pd.DataFrame.from_dict(load_ts, orient='index', dtype=None) # Convert load dictionary to dataframe
         load_ts_df.columns = ['Load']
+        load_ts_df = load_ts_df.loc[timepoints]
         
         dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts, load_ts_df], axis = 1)
         
@@ -658,10 +675,20 @@ for sc in range(len(scenarios)):
         dispatch_annual_gen_hydro = np.around(dispatch_annual_gen_hydro + dispatch_non_fossil_ts[['HYDRO-STORAGE', 'HYDRO-ROR', 'HYDRO-PONDAGE']].sum(axis=1).sum(axis=0), decimals = 2) 
         dispatch_annual_gen_nuclear = np.around(dispatch_annual_gen_nuclear + dispatch_non_fossil_ts['NUCLEAR'].sum(axis=0), decimals = 2) 
         
+        ## Difference between daily hydro storage available energy and hydro actual dispatched energy
+        genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
+        
+        ## TOTAL DISPATCH COST - BOTTOM UP METHOD (in case specific timepoints need to be specified e.g. first 24 hours)
+        genALL_varCost_df = pd.DataFrame.from_dict([genALL_varCost], orient='columns')
+        dispatch_cost_ts = dispatch_all_ts * genALL_varCost_df.loc[0] # Cost of each generator for each timepoint
+        dispatch_cost_bottomup = dispatch_cost_ts.sum().sum() # specify only first 24 hours
+        
         ## TOTAL DISPATCH COST
-        dispatch_cost_df = pd.DataFrame([[d, dispatch_cost]], columns = ['Day', 'Dispatch_Cost'])
+        dispatch_cost_df = pd.DataFrame([[d, dispatch_cost_bottomup]], columns = ['Day', 'Dispatch_Cost'])
         dispatch_cost_ts_annual = dispatch_cost_ts_annual.append(dispatch_cost_df, ignore_index=True) # Daily dispatch cost time series
         dispatch_cost_annual = dispatch_cost_annual + dispatch_cost # total annual dispatch cost for summary
+        
+
         
     
     '''
