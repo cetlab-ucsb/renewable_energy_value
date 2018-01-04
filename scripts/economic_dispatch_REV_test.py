@@ -93,6 +93,8 @@ genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same
 genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
 storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
 storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
+storBATTERY_storCapacity_multiplier = 1 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+storBATTERY_storEnergy_multiplier = 1 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
 
 '''
 #############################################
@@ -128,7 +130,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test4"    
+scenario_suffix_operation = "_70min_test10_lookahead_battery"    
     
 for sc in range(len(scenarios)):
     
@@ -249,11 +251,13 @@ for sc in range(len(scenarios)):
     # BATTERY STORAGE POWER CAPACITY
     storBATTERY_storCapacity = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_capacity']] # type can be bat_storage or phs_storage if PHS has different constraints
     storBATTERY_storCapacity.set_index('storage', inplace=True)
+    storBATTERY_storCapacity = storBATTERY_storCapacity * storBATTERY_storCapacity_multiplier # Use for different scenarios as well as no battery storage when multiplier is zero
     storBATTERY_storCapacity = storBATTERY_storCapacity.to_dict()['stor_capacity']
     
     # BATERY STORAGE ENERGY CAPACTY
     storBATTERY_storEnergy = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_energy']] # type can be bat_storage or phs_storage if PHS has different constraints
     storBATTERY_storEnergy.set_index('storage', inplace=True)
+    storBATTERY_storEnergy = storBATTERY_storEnergy * storBATTERY_storEnergy_multiplier # Use for different scenarios as well as no battery storage when multiplier is zero
     storBATTERY_storEnergy = storBATTERY_storEnergy.to_dict()['stor_energy']
 
     
@@ -305,6 +309,8 @@ for sc in range(len(scenarios)):
         timepoints_minus_first = timepoints[1:] # All but the first element of the timepoints
         timepoints_first = [timepoints[0]] # Just the first timepoint
         timepoints_last = [timepoints[-1]] # Just the last timepoint
+        timepoints_plus_one = [timepoints[0] - 1] + timepoints
+        timepoints_plus_one_first = [timepoints_plus_one[0]] # Just the first timepoint of timepoint plus one
         load_ts.drop(['Day', 'dateTime'], axis=1, inplace=True) # Keep only the timepoint and load columns
         load_ts.set_index('Timepoint', inplace=True)
         load_ts = load_ts.round(0)
@@ -372,6 +378,8 @@ for sc in range(len(scenarios)):
         model.TIMEPOINTSMINUSFIRST = Set(initialize=timepoints_minus_first)
         model.TIMEPOINTSFIRST = Set(initialize=timepoints_first)
         model.TIMEPOINTSLAST = Set(initialize=timepoints_last)
+        model.TIMEPOINTSPLUSONE = Set(initialize=timepoints_plus_one) # Use this for initializing energy storage state of charge
+        model.TIMEPOINTSPLUSONEFIRST = Set(initialize=timepoints_plus_one_first) 
         model.GEN = Set(initialize=genALL) # Initialize with the list of all generators
         model.GENHYDRO = Set(within=model.GEN, initialize=genHYDRO) # Initialize with the HYDRO generator list ## Can use initialize=set(proj for proj in hydroEnergy)
         model.GENVRE = Set(within=model.GEN, initialize=genVRE) # Initialize with the VRE generator list
@@ -420,7 +428,7 @@ for sc in range(len(scenarios)):
         model.sc = Var(model.TIMEPOINTS, model.STORBATTERY, within = Binary) # flag for charging
         model.DischargeMW = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # discharge from storage
         model.ChargeMW = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # charge into storage
-        model.EnergyStorageMWh = Var(model.TIMEPOINTS, model.STORBATTERY, within=NonNegativeReals) # energy level of storage
+        model.EnergyStorageMWh = Var(model.TIMEPOINTSPLUSONE, model.STORBATTERY, within=NonNegativeReals) # energy level of storage
         
         '''
         #############################################
@@ -522,12 +530,12 @@ for sc in range(len(scenarios)):
         # Battery energy accounting
         def Enforce_Storage_Energy_Accounting_rule(mod, t, stor):
             return mod.EnergyStorageMWh[t, stor] == mod.EnergyStorageMWh[(t-1), stor] + storBATTERY_efficiency * mod.ChargeMW[t, stor] - mod.DischargeMW[t, stor]
-        model.Enforce_Storage_Energy_Accounting = Constraint(model.TIMEPOINTSMINUSFIRST, model.STORBATTERY, rule=Enforce_Storage_Energy_Accounting_rule)
+        model.Enforce_Storage_Energy_Accounting = Constraint(model.TIMEPOINTS, model.STORBATTERY, rule=Enforce_Storage_Energy_Accounting_rule)
         
         # Battery energy initializing state of charge
         def Enforce_Storage_Energy_First_SOC_rule(mod, t, stor):
             return mod.EnergyStorageMWh[t, stor] == mod.stor_energy[stor] * mod.stor_initial_soc[stor]
-        model.Enforce_Storage_Energy_First_SOC = Constraint(model.TIMEPOINTSFIRST, model.STORBATTERY, rule=Enforce_Storage_Energy_First_SOC_rule)
+        model.Enforce_Storage_Energy_First_SOC = Constraint(model.TIMEPOINTSPLUSONEFIRST, model.STORBATTERY, rule=Enforce_Storage_Energy_First_SOC_rule)
         
         # Battery energy last state of charge (same as first state of charge)
         def Enforce_Storage_Energy_Last_SOC_rule(mod, t, stor):
@@ -703,9 +711,6 @@ for sc in range(len(scenarios)):
         ## Annual dispatch for Nuclear and Hydro
         dispatch_annual_gen_hydro = np.around(dispatch_annual_gen_hydro + dispatch_non_fossil_ts[['HYDRO-STORAGE', 'HYDRO-ROR', 'HYDRO-PONDAGE']].sum(axis=1).sum(axis=0), decimals = 2) 
         dispatch_annual_gen_nuclear = np.around(dispatch_annual_gen_nuclear + dispatch_non_fossil_ts['NUCLEAR'].sum(axis=0), decimals = 2) 
-        
-        ## Difference between daily hydro storage available energy and hydro actual dispatched energy
-        genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
 
         ## TOTAL DISPATCH COST - BOTTOM UP METHOD (in case specific timepoints need to be specified e.g. first 24 hours)
         genALL_varCost_df = pd.DataFrame.from_dict([genALL_varCost], orient='columns')
@@ -721,8 +726,13 @@ for sc in range(len(scenarios)):
         dispatch_cost_ts_annual = dispatch_cost_ts_annual.append(dispatch_cost_df, ignore_index=True) # Daily dispatch cost time series
         dispatch_cost_annual = dispatch_cost_annual + dispatch_cost_bottomup # total annual dispatch cost for summary USED TO BE DISPATCH_COST FROM OPTIMIZATION OUTPUT
         
-
+        ## PARAMETERS THAT NEED TO BE PASSED TO THE NEXT LOOP
+        # Battery initial state of charge for the next loop. Information from the lookahead period.
+        storBATTERY_initial_soc = energy_stor_battery_ts['BAT-STORAGE'][energy_stor_battery_ts.index[-1]] / storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
         
+        ## Difference between daily hydro storage available energy and hydro actual dispatched energy
+        genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
+
     
     '''
     ###############################################
