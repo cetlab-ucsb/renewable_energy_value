@@ -77,6 +77,10 @@ scenarios = ["S200W200"] #["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "
 
 ## Load
 load = pd.read_csv(inputPath + load_csv, sep=',')
+# Load dataframe to add to result at the end
+load_all = load[['Timepoint', 'load']]
+load_all.set_index('Timepoint', inplace=True)
+    
 
 ## Read the VRE capacities for all scenarios
 # genVRE_allScenarios = pd.read_csv(inputPathVRE + str(yearBase) + "_RE_capacity_all_scenarios" + ".csv", sep=',')
@@ -124,7 +128,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test2"    
+scenario_suffix_operation = "_70min_test4"    
     
 for sc in range(len(scenarios)):
     
@@ -142,6 +146,11 @@ for sc in range(len(scenarios)):
     genVRE_toAdd_melt.columns = ['generator', 'gen_capacity']
     genVRE_toAdd_melt['var_cost'] = 0
     genVRE_toAdd_melt['type'] = 'vre'
+    ## Create a dataframe for VRE potential generation
+    vre_potential_generation_ts = pd.DataFrame(genVRE_all['solarPV'] * genVRE_toAdd['solarPV'][0])
+    vre_potential_generation_ts['wind'] = genVRE_all['wind'] * genVRE_toAdd['wind'][0]
+    vre_potential_generation_ts['Timepoint'] = genVRE_all['Timepoint']
+    vre_potential_generation_ts.set_index('Timepoint', inplace=True)
     
     ## NEW CONVENTIONAL GENERATOR BUILDOUT
     genCONV_toAdd = pd.read_csv(inputPathNEWCONV_capacity + str(yearAnalysis) + "_conventional_capacity_" + scenarios[sc] + scenario_suffix + ".csv", sep=',')
@@ -275,6 +284,9 @@ for sc in range(len(scenarios)):
     
     discharge_annual_stor_battery = 0
     charge_annual_stor_battery = 0
+    
+    curtailment_annual_gen_vre = 0
+    potential_gen_vre_2 = 0
     
     # Set imbalance in allocated/available hydro storage energy and actual dispatched energy as zero
     genHYDRO_maxEnergy_available_dispatched_diff = 0
@@ -650,7 +662,17 @@ for sc in range(len(scenarios)):
         #dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_ts, ignore_index=True) # Add the day's dispatch to the annual result
         charge_annual_stor_battery = np.around(charge_annual_stor_battery + charge_stor_battery_ts.sum(axis=1).sum(axis=0), decimals = 2) # Total annual generation    
 
-        
+        ## ENERGY LEVEL OF BATTERY STORAGE
+        energy_stor_battery_ts = pd.DataFrame(index = timepoints)
+        for p in storBATTERY:
+            energy_ts_stor = [model_instance.EnergyStorageMWh[t,p].value for t in timepoints]
+            energy_ts_stor_df = pd.DataFrame({p : energy_ts_stor}, index = timepoints)
+            # dispatch_ts = dispatch_ts.concat(dispatch_ts_gen_df, axis = 1)
+            energy_stor_battery_ts[p] = energy_ts_stor_df
+        #dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_ts, ignore_index=True) # Add the day's dispatch to the annual result
+        #energy_annual_stor_battery = np.around(energy_annual_stor_battery + charge_stor_battery_ts.sum(axis=1).sum(axis=0), decimals = 2) # Total annual generation    
+
+
         ## SUMMARY DISPATCH OF ALL GENERATORS FOR THE DAY
         non_fossil_generators = ["HYDRO-STORAGE", "HYDRO-ROR", "NUCLEAR", "HYDRO-PONDAGE", "solarPV", "wind"]
         dispatch_non_fossil_ts = dispatch_all_ts[non_fossil_generators] # Choose all the non-fossil generator columns
@@ -662,12 +684,19 @@ for sc in range(len(scenarios)):
         
         discharge_all_stor_battery_ts = pd.DataFrame(discharge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Discharge'])
         charge_all_stor_battery_ts = pd.DataFrame(charge_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Charge'])
+        energy_all_stor_battery_ts = pd.DataFrame(energy_stor_battery_ts.sum(axis=1), columns = ['Bat-Storage-Energy-MWh'])
         
-        load_ts_df = pd.DataFrame.from_dict(load_ts, orient='index', dtype=None) # Convert load dictionary to dataframe
-        load_ts_df.columns = ['Load']
-        load_ts_df = load_ts_df.loc[timepoints]
+        ## Renewable energy curtailment
+        vre_curtailment = vre_potential_generation_ts.ix[timepoints].sum(axis=1) - dispatch_vre_ts.sum(axis=1)
+        vre_curtailment = vre_curtailment.round(decimals=0)
+        vre_curtailment = pd.DataFrame(vre_curtailment, columns = ['curtailment'])
+        curtailment_annual_gen_vre = np.round(curtailment_annual_gen_vre + vre_curtailment.sum().sum())
+        potential_gen_vre_2 = np.round(potential_gen_vre_2 + vre_potential_generation_ts.ix[timepoints].sum().sum(), decimals = 0)
         
-        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts, load_ts_df], axis = 1)
+        ## Load curve
+        load_ts_df = load_all.loc[timepoints]
+        
+        dispatch_all_gen_ts = pd.concat([dispatch_non_fossil_ts, dispatch_all_coal_ts, dispatch_all_gas_ccgt_ts, dispatch_all_gas_ct_ts, dispatch_all_diesel_ts, dispatch_all_other_ts, discharge_all_stor_battery_ts, charge_all_stor_battery_ts, vre_curtailment, load_ts_df, energy_all_stor_battery_ts], axis = 1)
         
         dispatch_all_ts_annual = dispatch_all_ts_annual.append(dispatch_all_gen_ts) #, ignore_index=True) # Add the day's dispatch to the annual result
         
@@ -677,16 +706,20 @@ for sc in range(len(scenarios)):
         
         ## Difference between daily hydro storage available energy and hydro actual dispatched energy
         genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
-        
+
         ## TOTAL DISPATCH COST - BOTTOM UP METHOD (in case specific timepoints need to be specified e.g. first 24 hours)
         genALL_varCost_df = pd.DataFrame.from_dict([genALL_varCost], orient='columns')
         dispatch_cost_ts = dispatch_all_ts * genALL_varCost_df.loc[0] # Cost of each generator for each timepoint
         dispatch_cost_bottomup = dispatch_cost_ts.sum().sum() # specify only first 24 hours
         
+        # Flag if dispatch cost from optimization problem and bottom up summation is different
+#        if (abs((dispatch_cost- dispatch_cost_bottomup)/dispatch_cost) > 0.001):
+#            print "ERROR: dispatch cost from optimization problem and bottom up summation is different."
+        
         ## TOTAL DISPATCH COST
         dispatch_cost_df = pd.DataFrame([[d, dispatch_cost_bottomup]], columns = ['Day', 'Dispatch_Cost'])
         dispatch_cost_ts_annual = dispatch_cost_ts_annual.append(dispatch_cost_df, ignore_index=True) # Daily dispatch cost time series
-        dispatch_cost_annual = dispatch_cost_annual + dispatch_cost # total annual dispatch cost for summary
+        dispatch_cost_annual = dispatch_cost_annual + dispatch_cost_bottomup # total annual dispatch cost for summary USED TO BE DISPATCH_COST FROM OPTIMIZATION OUTPUT
         
 
         
@@ -718,15 +751,15 @@ for sc in range(len(scenarios)):
     
     ## SUMMARY TABLE
     scenarioSummary = pd.DataFrame([[scenarios[sc] + scenario_suffix + scenario_suffix_operation, dispatch_cost_annual, dispatch_annual_gen_all,
-                                     potential_gen_vre, dispatch_annual_gen_vre, dispatch_annual_gen_solarPV, dispatch_annual_gen_wind,
+                                     potential_gen_vre_2, dispatch_annual_gen_vre, curtailment_annual_gen_vre, dispatch_annual_gen_solarPV, dispatch_annual_gen_wind,
                                       dispatch_annual_gen_coal, dispatch_annual_gen_gas_ccgt, dispatch_annual_gen_gas_ct,
                                      dispatch_annual_gen_diesel, dispatch_annual_gen_other, dispatch_annual_gen_hydro, dispatch_annual_gen_nuclear,
                                      discharge_annual_stor_battery, charge_annual_stor_battery,
                                      new_capacity_coal, new_capacity_gas_ccgt, new_capacity_gas_ct, 
                                      capacity_vre, capacity_solarPV, capacity_wind, 
-                                     battery_storage_capacity, battery_storage_capacity, strftime("%Y-%m-%d %H:%M:%S")]], 
+                                     battery_storage_capacity, battery_storage_energy, strftime("%Y-%m-%d %H:%M:%S")]], 
                                         columns = ["scenario", "dispatch_cost", "ann_gen_total_MWh", 
-                                        "ann_gen_vre_nocurt_MWh", "ann_gen_vre_MWh", "ann_gen_solarPV_MWh", "ann_gen_wind_MWh",
+                                        "ann_gen_vre_nocurt_MWh", "ann_gen_vre_MWh", "ann_curt_vre_MWh", "ann_gen_solarPV_MWh", "ann_gen_wind_MWh",
                                         "ann_gen_coal_MWh", "ann_gen_gas_ccgt_MWh", "ann_gen_gas_ct_MWh", 
                                         "ann_gen_diesel_MWh", "ann_gen_other_MWh", "ann_gen_hydro_MWh", "ann_gen_nuclear_MWh",
                                         "ann_discharge_bat_storage_MWh", "ann_charge_bat_storage_MWh",
