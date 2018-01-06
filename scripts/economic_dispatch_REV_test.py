@@ -140,6 +140,14 @@ for sc in range(len(scenarios)):
     
     ## VRE generation
     genVRE_all = pd.read_csv(inputPathVRE_gen_profiles + str(yearBase) + "_RE_gen_" + scenarios[sc] + ".csv", sep=',')
+    # Add repeated data for lookahead periods
+    for v in range(1, 1 + num_lookahead_days, 1):        
+        genVRE_all_to_append = genVRE_all.loc[genVRE_all['Day'] == genVRE_all[-1:].iloc[0]['Day']]
+        genVRE_all_to_append.loc[:,'Day'] += 1
+        genVRE_all_to_append.loc[:,'Timepoint'] += 24 # Assuming the model has hourly timestep. Otherwise change this code
+        genVRE_all = genVRE_all.append(genVRE_all_to_append, ignore_index = True)
+    
+    
     ## Add VRE generators and their capacities to the gen
     #genVRE_toAdd = genVRE_allScenarios.loc[genVRE_allScenarios['scenario'] == sc]
     genVRE_toAdd = pd.read_csv(inputPathVRE_capacity + str(yearBase) + "_RE_capacity_" + scenarios[sc] + ".csv", sep=',')
