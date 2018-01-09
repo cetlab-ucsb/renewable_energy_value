@@ -226,7 +226,7 @@ for sc in range(len(scenarios)):
     genGASCT_genCapacity = genALL_input[genALL_input['type'].isin(['gas_ct'])][['generator', 'gen_capacity']]
     genGASCT_genCapacity.set_index('generator', inplace=True)
     genGASCT_genCapacity = genGASCT_genCapacity.to_dict()['gen_capacity']
-    # Capacity - # ccgt gas generators
+    # Capacity - # diesel generators
     genDIESEL_genCapacity = genALL_input[genALL_input['type'].isin(['diesel'])][['generator', 'gen_capacity']]
     genDIESEL_genCapacity.set_index('generator', inplace=True)
     genDIESEL_genCapacity = genDIESEL_genCapacity.to_dict()['gen_capacity']
@@ -353,20 +353,7 @@ for sc in range(len(scenarios)):
         genMUSTRUN_cf_ts = pd.DataFrame(genMUSTRUN_cf_ts.mean(axis=0)) # mean of min gen across current and lookahead days
         genMUSTRUN_cf_ts = genMUSTRUN_cf_ts.to_dict().itervalues().next() # convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
         # genMUSTRUN_cf_ts = genMUSTRUN_cf_ts.T.to_dict().itervalues().next() # Old Code before averaging: Take the transpose of the dataframe (in this case one row), then convert to dictionary, and take the next level using itervalues because the index will keep changing in the loop
-        
-        ## TEST CODE
-        '''
-        timePoints = list(range(1,5))
-        generators = ["Coal1", "Coal2", "PV1", "Wind1", "Hydro1"]
-        generatorsHydro = ["Hydro1"]
-        load = {1: 60, 2:30, 3:40, 4:20}
-        varCost = {"Coal1":2, "Coal2":3, "PV1":0, "Wind1":0, "Hydro1":0}
-        genCapacity = {"Coal1":15, "Coal2":50, "PV1":20, "Wind1":10, "Hydro1":20}
-        genMinLevel = {"Coal1":5, "Coal2":5, "PV1":0, "Wind1":0, "Hydro1":5} # don't need vre min gen because dispatch is within nonnegativereals. Only hydro and thermal min gen req.
-        hydroEnergy = {"Hydro1":30}
-        #genVRE = {(1,"PV1"):3, (2,"PV1"):4, (3,"PV1"): 8, (4,"PV1"): 10}
-        '''
-        
+                
         #start_time = time.time()
         #print start_time
         '''
@@ -502,7 +489,7 @@ for sc in range(len(scenarios)):
     
         # Dispatch >= min generation level for Hydro
         def Enforce_Min_Dispatch_Limit_Hydro_rule(mod, t, gen):
-            return mod.DispatchMW[t, gen] >= mod.gen_min_cf_hydro[gen] * mod.gen_capacity[gen] * mod.uc[gen]
+            return mod.DispatchMW[t, gen] >= mod.gen_min_cf_hydro[gen] * mod.gen_capacity[gen] #* mod.uc[gen] # hydro should generate at min gen level no matter what. Daily energy/24 should be > min gen
         model.Enforce_Min_Dispatch_Limit_Hydro = Constraint(model.TIMEPOINTS, model.GENHYDRO, rule=Enforce_Min_Dispatch_Limit_Hydro_rule)
         
         # Total hydro energy is conserved across the time series (e.g. day)
