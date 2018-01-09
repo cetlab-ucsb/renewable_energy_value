@@ -30,10 +30,12 @@ print start_time
 '''
 ### IMPORTING DATA
 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
-inputPath = myPath + "india_ED\\india_ED_input\\"
-inputPathVRE_gen_profiles = myPath + "india_ED\\india_ED_input\\REvalue_gen_profiles\\"
-inputPathVRE_capacity = myPath + "india_ED\\india_ED_input\\REvalue_capacity\\"
+myPath = "G:\\Electricity_Models\\" # "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
+inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
+inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"
+
+
 
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
@@ -53,7 +55,7 @@ genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants
 genNEWGASCT_csv = "gen_new_gas_ct_input.csv" # List of new CT gas plants
 genNEWGASCCGT_csv = "gen_new_gas_ccgt_input.csv" # List of new CCGT gas plants
 # EXOGENOUSLY SET COAL TO GAS RATIO (Then set the ratio_new_coal parameter)
-all_new_coal = 'yes' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
+all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
 #set_coal_gas_ratio = 'yes'
 #ratio_new_coal = 1 # Fraction of new conventional capacity from coal
 #ratio_new_gas = 1-ratio_new_coal # Fraction of new conventional capacity from gas
@@ -72,7 +74,7 @@ days_to_run = 365 # Number of days to run. Set to 365 for 1 year run
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]#, ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # List of VRE scenarios
+scenarios = ['S200W200'] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]#, ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # List of VRE scenarios
 
 ## Load
 load = pd.read_csv(inputPath + load_csv, sep=',')
@@ -94,7 +96,7 @@ cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_poin
 '''
 
 # Path for output files for conventional generator builout
-outputConvBuildoutPath = myPath + "india_ED\\india_ED_input\\new_conventional_capacity\\"
+outputConvBuildoutPath = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"
 
 '''
 #############################################
