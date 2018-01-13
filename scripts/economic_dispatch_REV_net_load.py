@@ -32,7 +32,8 @@ opt = SolverFactory("cplex")
 '''
 ### IMPORTING DATA
 
-myPath = "G:\\Electricity_Models\\" # "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+#myPath = "G:\\Electricity_Models\\" 
+myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
 inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"
@@ -65,7 +66,7 @@ derating_outages_conventional_gen = "yes"
 #days_to_run = 2
 start_day = 1
 end_day = 365
-num_lookahead_days = 0 # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
+num_lookahead_days = 1 # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
 
 
 '''
@@ -73,7 +74,7 @@ num_lookahead_days = 0 # Number of days in addition to the realtime day to optim
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S200W200"] #["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
+scenarios = ["S200W200"] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
 
 ## Load
 load = pd.read_csv(inputPath + load_csv, sep=',')
@@ -86,11 +87,11 @@ load_all.set_index('Timepoint', inplace=True)
 # genVRE_allScenarios = pd.read_csv(inputPathVRE + str(yearBase) + "_RE_capacity_all_scenarios" + ".csv", sep=',')
 
 ## USER SPECIFIED PARAMETERS
-genCOAL_minGen_cf = 0.70 ## For now, the entire COAL fleet will have the same minimum CF, derated by the outage rate.
-genGASCCGT_minGen_cf = 0.50 ## For now, the entire CCGT GAS fleet will have the same minimum CF.
-genOTHER_minGen_cf = 0.70 ## For now, the entire OTHER fleet will have the same minimum CF.
-genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same minimum CF. - not used
-genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
+#genCOAL_minGen_cf = 0.70 ## For now, the entire COAL fleet will have the same minimum CF, derated by the outage rate.
+#genGASCCGT_minGen_cf = 0.50 ## For now, the entire CCGT GAS fleet will have the same minimum CF.
+#genOTHER_minGen_cf = 0.70 ## For now, the entire OTHER fleet will have the same minimum CF.
+#genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same minimum CF. - not used
+#genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
 storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
 storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
 storBATTERY_storCapacity_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
@@ -133,7 +134,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test13_net_load3_nobattery_nolookahead"    
+scenario_suffix_operation = "_70min_test19_net_load8_battery0_lookahead"    
     
 for sc in range(len(scenarios)):
     
