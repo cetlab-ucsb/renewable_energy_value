@@ -30,7 +30,8 @@ print start_time
 '''
 ### IMPORTING DATA
 
-myPath = "G:\\Electricity_Models\\" # "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+#myPath = "G:\\Electricity_Models\\" 
+myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
 inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"

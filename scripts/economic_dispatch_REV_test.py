@@ -32,7 +32,8 @@ opt = SolverFactory("cplex")
 '''
 ### IMPORTING DATA
 
-myPath = "G:\\Electricity_Models\\" # "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+#myPath = "G:\\Electricity_Models\\" 
+myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
 inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"
@@ -64,7 +65,7 @@ outage_rate_other = 0.3 # These outage rates need to match the ones from the con
 derating_outages_conventional_gen = "yes"
 #days_to_run = 2
 start_day = 1
-end_day = 2
+end_day = 365
 num_lookahead_days = 1 # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
 
 
@@ -93,8 +94,8 @@ genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same
 genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
 storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
 storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
-storBATTERY_storCapacity_multiplier = 1 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
-storBATTERY_storEnergy_multiplier = 1 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+storBATTERY_storCapacity_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+storBATTERY_storEnergy_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
 
 '''
 #############################################
@@ -130,7 +131,7 @@ elif coal_low_cap_cost == 'yes':
 else:
     scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test10_lookahead_battery"    
+scenario_suffix_operation = "_70min_test18_battery0_lookahead"    
     
 for sc in range(len(scenarios)):
     
@@ -302,6 +303,7 @@ for sc in range(len(scenarios)):
     
     # Set imbalance in allocated/available hydro storage energy and actual dispatched energy as zero
     genHYDRO_maxEnergy_available_dispatched_diff = 0
+    genHYDRO_summary_ts_all = pd.DataFrame() # summarize the allocated and actual dispatch of hydro
     
     #d = 1
     for d in range(start_day, end_day + 1):
@@ -727,8 +729,14 @@ for sc in range(len(scenarios)):
         
         ## Difference between daily hydro storage available energy and hydro actual dispatched energy
         genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
-
-    
+        genHYDRO_maxEnergy_available_dispatched_diff_perc = np.around((genHYDRO_maxEnergy_available_dispatched_diff / genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] * 100), decimals = 1)
+        
+        genHYDRO_summary_ts = pd.DataFrame([[genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0], dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0), 
+                                             genHYDRO_maxEnergy_available_dispatched_diff, genHYDRO_maxEnergy_available_dispatched_diff_perc]], 
+                                             columns = ['allocated', 'dispatched', 'difference_RT', 'difference_RT_perc'], index = [d])
+                                             
+        genHYDRO_summary_ts_all = genHYDRO_summary_ts_all.append(genHYDRO_summary_ts)
+        
     '''
     ###############################################
     ## PROCESSING ANNUAL RESULTS FOR SCENARIO #####
@@ -751,8 +759,8 @@ for sc in range(len(scenarios)):
     potential_gen_vre = potential_gen_solarPV + potential_gen_wind
     
     ## BATTERY STORAGE
-    battery_storage_capacity = storBATTERY_input['stor_capacity'][storBATTERY_input['type']=='bat_storage'].sum()
-    battery_storage_energy = storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
+    battery_storage_capacity = storBATTERY_input['stor_capacity'][storBATTERY_input['type']=='bat_storage'].sum() * storBATTERY_storCapacity_multiplier
+    battery_storage_energy = storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum() * storBATTERY_storEnergy_multiplier
     
     ## SUMMARY TABLE
     scenarioSummary = pd.DataFrame([[scenarios[sc] + scenario_suffix + scenario_suffix_operation, dispatch_cost_annual, dispatch_annual_gen_all,
@@ -788,6 +796,10 @@ for sc in range(len(scenarios)):
     
     ## WRITING THE DISPATCH TABLE TO CSV
     dispatch_all_ts_annual.to_csv(outputPath + "dispatch_all_gen_" + scenarios[sc] + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
+    
+    ## WRITING THE HYDRO SUMMARY FILE TO CSV
+    genHYDRO_summary_ts_all.to_csv(outputPath + "hydro_summary_" + scenarios[sc] + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
+
 
 elapsed_time = (time.time() - start_time)/(60)
 print str(elapsed_time) + " minutes"
