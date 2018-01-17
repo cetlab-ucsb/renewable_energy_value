@@ -30,30 +30,71 @@ opt = SolverFactory("cplex")
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-### IMPORTING DATA
-
-#myPath = "G:\\Electricity_Models\\" 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+myPath = "G:\\Electricity_Models\\" 
+#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
-inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
-inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"
-inputPathNEWCONV_capacity = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"
-outputPath = myPath + "renewable_energy_value\\india_REV_output\\net_load_dispatch\\"
-results_all_scenarios_csv = "results_all_scenarios_test.csv"
-
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
+### SPECIFY SCENARIO
+scenario_main = "base"
 yearAnalysis = 2030
-yearBase = 2014
-load_csv = "load" + str(yearAnalysis) + "_19EPS" + ".csv" # Load CSV
+start_day = 1
+end_day = 365
+
+### INPUT SCENARIO CSV
+inputScenario = pd.read_csv(inputPath + "REvalue_input_csv.csv", sep=',')
+inputScenario = inputScenario[['parameter', scenario_main]]
+inputScenario.fillna('', inplace = True)
+inputScenario.set_index('parameter', inplace=True)
+
+### SCENARIO SUFFIXES
+scenario_suffix = inputScenario.loc['scenario_suffix'][scenario_main]
+new_conventional_capacity_folder_suffix = inputScenario.loc['new_conventional_capacity_folder_suffix'][scenario_main]
+net_load_folder_suffix = inputScenario.loc['net_load_folder_suffix'][scenario_main]
+REvalue_folder_suffix = inputScenario.loc['REvalue_folder_suffix'][scenario_main]
+battery_scenario = inputScenario.loc['battery_cap_gw_fkey'][scenario_main]
+scenario_suffix_operation = ""    ## User defined
+
+### PATHS
+inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\" + REvalue_folder_suffix + "\\"
+inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\" + REvalue_folder_suffix + "\\"
+inputPathNEWCONV_capacity = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"  + new_conventional_capacity_folder_suffix + "\\"
+outputPath = myPath + "renewable_energy_value\\india_REV_output\\"
+outputPathDispatch = outputPath + scenario_suffix + "\\net_load\\"
+#outputPathHydroDispatch = outputPath + scenario_suffix + "\\hydro_dispatch\\" 
+outputPathNetLoad = inputPath + "net_load\\" + net_load_folder_suffix + "\\" 
+
+### CSVs
+results_all_scenarios_csv = "results_all_scenarios_net_load.csv"
+
+yearBase = inputScenario.loc['load_year'][scenario_main]
+load_modified = inputScenario.loc['load_modified_suffix'][scenario_main]
+load_csv = "load" + str(yearAnalysis) + load_modified + "_19EPS" + ".csv" # Load CSV
 genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
 #genVRE_csv = "vre_gen.csv" # variable RE generator csv with dispatch capacity factors
 genHYDRO_minGen_csv = "hydro_min_gen.csv"
 genHYDRO_maxEnergy_csv = "hydro_max_energy.csv"
 genMUSTRUN_csv = "mustrun_gen.csv" # must run generators like nuclear and run-of-river hydro that have a constant output through the timeseries (e.g. day)
 storBATTERY_csv = "battery_storage.csv"
+
+
+'''
+#############################################
+## INPUTS ##
+#############################################
+'''
+scenarios = ["S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
+
+## Load
+load = pd.read_csv(inputPath + load_csv, sep=',')
+# Load dataframe to add to result at the end
+load_all = load[['Timepoint', 'load']]
+load_all.set_index('Timepoint', inplace=True)
+    
+
+## USER SPECIFIED PARAMETERS
 VoLL = 100000 # Value of lost load
 all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
 coal_low_cap_cost = 'yes'
@@ -63,40 +104,18 @@ outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the 
 outage_rate_diesel = 0.2 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_other = 0.3 # These outage rates need to match the ones from the conventional buildout algorithm
 derating_outages_conventional_gen = "yes"
-#days_to_run = 2
-start_day = 1
-end_day = 365
-num_lookahead_days = 1 # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
-
-
-'''
-#############################################
-## INPUTS ##
-#############################################
-'''
-scenarios = ["S200W200"] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
-
-## Load
-load = pd.read_csv(inputPath + load_csv, sep=',')
-# Load dataframe to add to result at the end
-load_all = load[['Timepoint', 'load']]
-load_all.set_index('Timepoint', inplace=True)
-    
-
-## Read the VRE capacities for all scenarios
-# genVRE_allScenarios = pd.read_csv(inputPathVRE + str(yearBase) + "_RE_capacity_all_scenarios" + ".csv", sep=',')
-
-## USER SPECIFIED PARAMETERS
 #genCOAL_minGen_cf = 0.70 ## For now, the entire COAL fleet will have the same minimum CF, derated by the outage rate.
 #genGASCCGT_minGen_cf = 0.50 ## For now, the entire CCGT GAS fleet will have the same minimum CF.
 #genOTHER_minGen_cf = 0.70 ## For now, the entire OTHER fleet will have the same minimum CF.
 #genGASCT_minGen_cf = 0.50 ## For now, the entire CT GAS fleet will have the same minimum CF. - not used
 #genDIESEL_minGen_cf = 0.50 ## For now, the entire DIESEL fleet will have the same minimum CF. - not used
-storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
+#storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
 storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
-storBATTERY_storCapacity_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
-storBATTERY_storEnergy_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+#storBATTERY_storCapacity_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+#storBATTERY_storEnergy_multiplier = 0 # Set zero for no battery storage; ;or adjust the relative ratio of capacity to energy. Currently set at 4h storage in csv
+num_lookahead_days = int(inputScenario.loc['LA_days'][scenario_main]) # Number of days in addition to the realtime day to optimize battery and hydro storage. Set to zero if no lookahead/forecast is included.
 
+gen_capacity_conventional_hypothetical = 400000 # capacity in MW
 genCONVHYPOTHETICAL_cost_param_a = 0.01
 genCONVHYPOTHETICAL_cost_param_b = 10**-7
 
@@ -108,12 +127,21 @@ genCONVHYPOTHETICAL_cost_param_b = 10**-7
 # Create output folder if path does not exist
 if not os.path.exists(outputPath):
     os.makedirs(outputPath)
+    
+# Create output folder for dispatch for net load (non-linear) if path does not exist
+if not os.path.exists(outputPathDispatch):
+    os.makedirs(outputPathDispatch)
+
+# Create output folder for net load if path does not exist
+if not os.path.exists(outputPathNetLoad):
+    os.makedirs(outputPathNetLoad)
+    
 
 # Read the ALL SCENARIO RESULTS file, or if it does not exist, create output dataframe 
 if os.path.exists(outputPath + results_all_scenarios_csv):
     results_all_scenarios = pd.read_csv(outputPath + results_all_scenarios_csv, sep=',')
 else:
-    results_all_scenarios = pd.DataFrame(columns = ["scenario", "dispatch_cost", "ann_gen_total_MWh", 
+    results_all_scenarios = pd.DataFrame(columns = ["scenario", "scenario_main", "ann_gen_total_MWh", 
                                         "ann_gen_vre_nocurt_MWh", "ann_gen_vre_MWh", "ann_curt_vre_MWh", "ann_gen_solarPV_MWh", "ann_gen_wind_MWh",
                                         "ann_gen_hydro_MWh", "ann_gen_nuclear_MWh",
                                         "ann_discharge_bat_storage_MWh", "ann_charge_bat_storage_MWh",
@@ -126,15 +154,15 @@ else:
 ## SCENARIOS IN A LOOP ##
 #############################################
 '''
-# Set the scenario suffix. Applied to new conventional capacity input and output scenario
-if all_new_coal == 'yes':
-    scenario_suffix = '_allCoal'
-elif coal_low_cap_cost == 'yes':
-    scenario_suffix = '_lowCapCostCoal'
-else:
-    scenario_suffix = ''
+## Set the scenario suffix. Applied to new conventional capacity input and output scenario
+#if all_new_coal == 'yes':
+#    scenario_suffix = '_allCoal'
+#elif coal_low_cap_cost == 'yes':
+#    scenario_suffix = '_lowCapCostCoal'
+#else:
+#    scenario_suffix = ''
 
-scenario_suffix_operation = "_70min_test19_net_load8_battery0_lookahead"    
+scenario_suffix_operation = ""    
     
 for sc in range(len(scenarios)):
     
@@ -171,7 +199,7 @@ for sc in range(len(scenarios)):
     
     ## Battery storage
     storBATTERY_input = pd.read_csv(inputPath + storBATTERY_csv, sep=',')  # storage in this case does not include hydro. Only rechargeable storage - batteries, PHS
-    #storBATTERY_input = storBATTERY[['storage', 'stor_capacity', 'var_cost', 'type']] # storage in this case does not include hydro. Only rechargeable storage - batteries, PHS
+    storBATTERY_input = storBATTERY_input.loc[storBATTERY_input['scenario'] == battery_scenario]
     
     ## All generators
     genALL_input = pd.read_csv(inputPath + genALL_input_csv, sep=',')
@@ -186,7 +214,7 @@ for sc in range(len(scenarios)):
     genALL_input = genALL_input[genALL_input['type'].isin(['hydro', 'mustrun', 'vre'])]
     
     # Add the hypothetical generator record
-    genCONV_HYPOTHETICAL_df = pd.DataFrame([[400000, 'GEN_CONV_HYPOTHETICAL', 'conv_hypo', 0]], columns = ['gen_capacity', 'generator', 'type', 'var_cost'])
+    genCONV_HYPOTHETICAL_df = pd.DataFrame([[gen_capacity_conventional_hypothetical, 'GEN_CONV_HYPOTHETICAL', 'conv_hypo', 0]], columns = ['gen_capacity', 'generator', 'type', 'var_cost'])
     genALL_input = genALL_input.append(genCONV_HYPOTHETICAL_df, ignore_index = True)
     
 #    ## Derating conventional generator capacity based on outage rates
@@ -278,15 +306,19 @@ for sc in range(len(scenarios)):
     # BATTERY STORAGE POWER CAPACITY
     storBATTERY_storCapacity = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_capacity']] # type can be bat_storage or phs_storage if PHS has different constraints
     storBATTERY_storCapacity.set_index('storage', inplace=True)
-    storBATTERY_storCapacity = storBATTERY_storCapacity * storBATTERY_storCapacity_multiplier # Use for different scenarios as well as no battery storage when multiplier is zero
     storBATTERY_storCapacity = storBATTERY_storCapacity.to_dict()['stor_capacity']
     
     # BATERY STORAGE ENERGY CAPACTY
     storBATTERY_storEnergy = storBATTERY_input[storBATTERY_input['type'].isin(['bat_storage'])][['storage', 'stor_energy']] # type can be bat_storage or phs_storage if PHS has different constraints
     storBATTERY_storEnergy.set_index('storage', inplace=True)
-    storBATTERY_storEnergy = storBATTERY_storEnergy * storBATTERY_storEnergy_multiplier # Use for different scenarios as well as no battery storage when multiplier is zero
     storBATTERY_storEnergy = storBATTERY_storEnergy.to_dict()['stor_energy']
+    
+    # BATTERY STORAGE EFFICIENCY
+    storBATTERY_efficiency = storBATTERY_input.loc[storBATTERY_input['type'].isin(['bat_storage'])].iloc[0]['efficiency']
 
+    # If battery storage exists
+    if storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum() == 0:
+        battery_storage_flag = 0
     
     
     '''
@@ -584,7 +616,7 @@ for sc in range(len(scenarios)):
         results.write()
         
         dispatch_cost = model_instance.DispatchCost.expr() # Total dispatch cost
-        print "Total dispatch cost: INR " + str(dispatch_cost)
+        print "Total dispatch cost: INR " + str(dispatch_cost) + " for day " + str(d) + " of scenario " + scenarios[sc] 
         
         # model_instance.solutions.load_from(results)
         
@@ -751,22 +783,23 @@ for sc in range(len(scenarios)):
         dispatch_annual_gen_nuclear = np.around(dispatch_annual_gen_nuclear + dispatch_non_fossil_ts['NUCLEAR'].sum(axis=0), decimals = 2) 
 
         ## TOTAL DISPATCH COST - BOTTOM UP METHOD (in case specific timepoints need to be specified e.g. first 24 hours)
-        genALL_varCost_df = pd.DataFrame.from_dict([genALL_varCost], orient='columns')
-        dispatch_cost_ts = dispatch_all_ts * genALL_varCost_df.loc[0] # Cost of each generator for each timepoint
-        dispatch_cost_bottomup = dispatch_cost_ts.sum().sum() # specify only first 24 hours
+#        genALL_varCost_df = pd.DataFrame.from_dict([genALL_varCost], orient='columns')
+#        dispatch_cost_ts = dispatch_all_ts * genALL_varCost_df.loc[0] # Cost of each generator for each timepoint
+#        dispatch_cost_bottomup = dispatch_cost_ts.sum().sum() # specify only first 24 hours
         
         # Flag if dispatch cost from optimization problem and bottom up summation is different
 #        if (abs((dispatch_cost- dispatch_cost_bottomup)/dispatch_cost) > 0.001):
 #            print "ERROR: dispatch cost from optimization problem and bottom up summation is different."
         
         ## TOTAL DISPATCH COST
-        dispatch_cost_df = pd.DataFrame([[d, dispatch_cost_bottomup]], columns = ['Day', 'Dispatch_Cost'])
-        dispatch_cost_ts_annual = dispatch_cost_ts_annual.append(dispatch_cost_df, ignore_index=True) # Daily dispatch cost time series
-        dispatch_cost_annual = dispatch_cost_annual + dispatch_cost_bottomup # total annual dispatch cost for summary USED TO BE DISPATCH_COST FROM OPTIMIZATION OUTPUT
+#        dispatch_cost_df = pd.DataFrame([[d, dispatch_cost_bottomup]], columns = ['Day', 'Dispatch_Cost'])
+#        dispatch_cost_ts_annual = dispatch_cost_ts_annual.append(dispatch_cost_df, ignore_index=True) # Daily dispatch cost time series
+#        dispatch_cost_annual = dispatch_cost_annual + dispatch_cost_bottomup # total annual dispatch cost for summary USED TO BE DISPATCH_COST FROM OPTIMIZATION OUTPUT
         
         ## PARAMETERS THAT NEED TO BE PASSED TO THE NEXT LOOP
         # Battery initial state of charge for the next loop. Information from the lookahead period.
-        storBATTERY_initial_soc = energy_stor_battery_ts['BAT-STORAGE'][energy_stor_battery_ts.index[-1]] / storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
+        if battery_storage_flag != 0:
+            storBATTERY_initial_soc = energy_stor_battery_ts['BAT-STORAGE'][energy_stor_battery_ts.index[-1]] / storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
         
         ## Difference between daily hydro storage available energy and hydro actual dispatched energy
         genHYDRO_maxEnergy_available_dispatched_diff = genHYDRO_maxEnergy_all.loc[genHYDRO_maxEnergy_all['Day'] == d][genHYDRO].iloc[0,0] - dispatch_non_fossil_ts['HYDRO-STORAGE'].sum(axis=0)
@@ -798,13 +831,13 @@ for sc in range(len(scenarios)):
     battery_storage_energy = storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
     
     ## SUMMARY TABLE
-    scenarioSummary = pd.DataFrame([[scenarios[sc] + scenario_suffix + scenario_suffix_operation, dispatch_cost_annual, dispatch_annual_gen_all,
+    scenarioSummary = pd.DataFrame([[scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation, scenario_main, dispatch_annual_gen_all,
                                      potential_gen_vre_2, dispatch_annual_gen_vre, curtailment_annual_gen_vre, dispatch_annual_gen_solarPV, dispatch_annual_gen_wind,
                                      dispatch_annual_gen_hydro, dispatch_annual_gen_nuclear,
                                      discharge_annual_stor_battery, charge_annual_stor_battery,
                                      capacity_vre, capacity_solarPV, capacity_wind, 
                                      battery_storage_capacity, battery_storage_energy, strftime("%Y-%m-%d %H:%M:%S")]], 
-                                        columns = ["scenario", "dispatch_cost", "ann_gen_total_MWh", 
+                                        columns = ["scenario", "scenario_main", "ann_gen_total_MWh", 
                                         "ann_gen_vre_nocurt_MWh", "ann_gen_vre_MWh", "ann_curt_vre_MWh", "ann_gen_solarPV_MWh", "ann_gen_wind_MWh",
                                         "ann_gen_hydro_MWh", "ann_gen_nuclear_MWh",
                                         "ann_discharge_bat_storage_MWh", "ann_charge_bat_storage_MWh",
@@ -816,9 +849,9 @@ for sc in range(len(scenarios)):
     ## ADD SCENARIO RESULTS TO ALL SCENARIO RESULTS TABLE 
     # If the scenario exists, then overwrite the results of the old scenario, else append
     
-    if any(results_all_scenarios.scenario == scenarios[sc] + scenario_suffix + scenario_suffix_operation):
+    if any(results_all_scenarios.scenario == scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation):
         print "Deleted scenario's old result"
-        results_all_scenarios = results_all_scenarios[results_all_scenarios.scenario != scenarios[sc] + scenario_suffix + scenario_suffix_operation]
+        results_all_scenarios = results_all_scenarios[results_all_scenarios.scenario != scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation]
         
     results_all_scenarios = results_all_scenarios.append(scenarioSummary)
     
@@ -826,13 +859,13 @@ for sc in range(len(scenarios)):
     results_all_scenarios.to_csv(outputPath + results_all_scenarios_csv, sep=',', index = False) # write out all existing and new results
     
     ## WRITING THE DISPATCH TABLE TO CSV
-    dispatch_all_ts_annual.to_csv(outputPath + "dispatch_all_gen_" + scenarios[sc] + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
+    dispatch_all_ts_annual.to_csv(outputPathDispatch + "nonlinear_dispatch_all_gen_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
     
     ## WRITING THE NET NET LOAD TIME SERIES TO CSV - TO BE USED IN SCREENING CURVES CAPACITY EXPANSION SCRIPT
     netnetload_ts_annual.columns = ['net_load_final']
     netnetload_ts_annual = pd.concat([netnetload_ts_annual, dispatch_all_ts_annual[['HYDRO-STORAGE', 'Bat-Storage-Discharge', 'Bat-Storage-Charge']]], axis=1)
     netnetload_ts_annual.index.names = ['Timepoint']
-    netnetload_ts_annual.to_csv(inputPath + "net_load\\" + "net_load_hydro_" + scenarios[sc] + ".csv", sep=',', index = True)
+    netnetload_ts_annual.to_csv(outputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
 
 elapsed_time = (time.time() - start_time)/(60)
 print str(elapsed_time) + " minutes"

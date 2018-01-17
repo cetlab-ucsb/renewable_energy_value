@@ -23,72 +23,84 @@ opt = SolverFactory("cplex")
 start_time = time.time()
 print start_time
 
+
 '''
 #############################################
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-### IMPORTING DATA
-
-#myPath = "G:\\Electricity_Models\\" 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+myPath = "G:\\Electricity_Models\\" 
+#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
-inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\"
-inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\"
-
-
-
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
-#inputPathVRE = "G:\\IndiaREZ\\OUTPUTS\\india\\01052016_in\\REvalue_gen_profiles\\"
+### SPECIFY SCENARIO
+scenario_main = "base"
 yearAnalysis = 2030
-yearBase = 2014
-load_csv = "load" + str(yearAnalysis) + "_19EPS" + ".csv" # Load CSV
+start_day = 1
+end_day = 365
+
+### INPUT SCENARIO CSV
+inputScenario = pd.read_csv(inputPath + "REvalue_input_csv.csv", sep=',')
+inputScenario = inputScenario[['parameter', scenario_main]]
+inputScenario.fillna('', inplace = True)
+inputScenario.set_index('parameter', inplace=True)
+
+### SCENARIO SUFFIXES
+scenario_suffix = inputScenario.loc['scenario_suffix'][scenario_main]
+new_conventional_capacity_folder_suffix = inputScenario.loc['new_conventional_capacity_folder_suffix'][scenario_main]
+net_load_folder_suffix = inputScenario.loc['net_load_folder_suffix'][scenario_main]
+REvalue_folder_suffix = inputScenario.loc['REvalue_folder_suffix'][scenario_main]
+battery_scenario = inputScenario.loc['battery_cap_gw_fkey'][scenario_main]
+generator_cost_suffix = inputScenario.loc['generator_cost_suffix'][scenario_main]
+scenario_suffix_operation = ""    ## User defined. e.g. "all_new_coal"
+
+### PATHS
+inputPathNetLoad = inputPath + "net_load\\" + net_load_folder_suffix + "\\" 
+
+### CSVs
+yearBase = inputScenario.loc['load_year'][scenario_main]
+load_modified = inputScenario.loc['load_modified_suffix'][scenario_main]
+load_csv = "load" + str(yearAnalysis) + load_modified + "_19EPS" + ".csv" # Load CSV
 genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
-#genVRE_csv = "vre_gen.csv" # variable RE generator csv with dispatch capacity factors
-genHYDRO_minGen_csv = "hydro_min_gen.csv"
-genHYDRO_maxEnergy_csv = "hydro_max_energy.csv"
-genMUSTRUN_csv = "mustrun_gen.csv" # must run generators like nuclear and run-of-river hydro that have a constant output through the timeseries (e.g. day)
-#VoLL = 100000 # Value of lost load
 genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants
 genNEWGASCT_csv = "gen_new_gas_ct_input.csv" # List of new CT gas plants
 genNEWGASCCGT_csv = "gen_new_gas_ccgt_input.csv" # List of new CCGT gas plants
-# EXOGENOUSLY SET COAL TO GAS RATIO (Then set the ratio_new_coal parameter)
-all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
-#set_coal_gas_ratio = 'yes'
-#ratio_new_coal = 1 # Fraction of new conventional capacity from coal
-#ratio_new_gas = 1-ratio_new_coal # Fraction of new conventional capacity from gas
-coal_low_cap_cost = 'yes' # Set all_new_coal to 'no' Select the appropriate crossover csv
-# OUTAGE RATES
-outage_rate_coal = 0.1 # These outage rates need to match the ones from the ED algorithm
-outage_rate_gas_ct = 0.1 # These outage rates need to match the ones from the ED algorithm
-outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the ED algorithm
-outage_rate_diesel = 0.2 # These outage rates need to match the ones from the ED algorithm
-outage_rate_other = 0.3 # These outage rates need to match the ones from the ED algorithm
-reserve_margin_over_peak = 0.15 # This is the reserve margin for "available" generation capacity above peak demand
-days_to_run = 365 # Number of days to run. Set to 365 for 1 year run
 
 '''
 #############################################
 ## INPUTS ##
 #############################################
 '''
-scenarios = ['S200W200'] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]#, ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # List of VRE scenarios
+scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]#, ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # List of VRE scenarios
 
 ## Load
 load = pd.read_csv(inputPath + load_csv, sep=',')
 
-## Read the capacity factor cross-over points 
-if coal_low_cap_cost == 'yes':
-    crossover_suffix = "sc3"
-else:
-    crossover_suffix = "sc2"
-cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_points_" + crossover_suffix + ".csv", sep=',') # sc2 is USD10.7/MMbtu gas, IMF medium term 2009-2021 history and projections
+## USER SPECIFIED PARAMETERS
+VoLL = 100000 # Value of lost load
+all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
+coal_low_cap_cost = 'yes' # Set all_new_coal to 'no' Select the appropriate crossover csv
+outage_rate_coal = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
+outage_rate_gas_ct = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
+outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
+outage_rate_diesel = 0.2 # These outage rates need to match the ones from the conventional buildout algorithm
+outage_rate_other = 0.3 # These outage rates need to match the ones from the conventional buildout algorithm
+derating_outages_conventional_gen = "yes"
+reserve_margin_over_peak = 0.15 # This is the reserve margin for "available" generation capacity above peak demand
+storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
+storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
 
-## Read the VRE capacities for all scenarios
-#genVRE_allScenarios = pd.read_csv(inputPathVRE + str(yearBase) + "_RE_capacity_all_scenarios" + ".csv", sep=',')
+## Read the capacity factor cross-over points 
+cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_points.csv", sep=',') 
+#if coal_low_cap_cost == 'yes':
+#    crossover_suffix = "sc3"
+#else:
+#    crossover_suffix = "sc2"
+#cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_points_" + crossover_suffix + ".csv", sep=',') # sc2 is USD10.7/MMbtu gas, IMF medium term 2009-2021 history and projections
+
 
 '''
 #############################################
@@ -97,19 +109,23 @@ cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_poin
 '''
 
 # Path for output files for conventional generator builout
-outputConvBuildoutPath = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"
+outputPathNEWCONV_capacity = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"  + new_conventional_capacity_folder_suffix + "\\"
 
+# Create output folder if path does not exist
+if not os.path.exists(outputPathNEWCONV_capacity):
+    os.makedirs(outputPathNEWCONV_capacity)
+    
 '''
 #############################################
 ## SCENARIOS IN A LOOP ##
 #############################################
 '''
 if all_new_coal == 'yes':
-    scenario_suffix = '_allCoal'
-elif coal_low_cap_cost == 'yes':
-    scenario_suffix = '_lowCapCostCoal'
-else:
-    scenario_suffix = ''
+    scenario_suffix_operation = '_allCoal'
+#elif coal_low_cap_cost == 'yes':
+#    scenario_suffix = '_lowCapCostCoal'
+#else:
+#    scenario_suffix = ''
 
 
 for sc in range(len(scenarios)):
@@ -130,7 +146,7 @@ for sc in range(len(scenarios)):
     
     ## SCREENING CURVE CONVENTIONAL BUILDOUT
     ## Read the net load csv
-    net_load_hydro_input = pd.read_csv(inputPath + "net_load\\" + "net_load_hydro_" + scenarios[sc] + ".csv", sep=',', index_col='Timepoint')
+    net_load_hydro_input = pd.read_csv(inputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index_col='Timepoint')
     
     # Get the net load
     net_load = pd.DataFrame(net_load_hydro_input['net_load_final'])
@@ -157,8 +173,10 @@ for sc in range(len(scenarios)):
     # Percentage of net load energy as part of total net load energy
     
     # Get the crossover hours, then get the total conventional capacity required
-    crossover_hours_ct = int(8760 * cf_crossover['gas_ct'])
-    crossover_hours_ccgt = int(8760 * cf_crossover['gas_ccgt'])
+    #crossover_hours_ct = int(8760 * cf_crossover['gas_ct'])
+    #crossover_hours_ccgt = int(8760 * cf_crossover['gas_ccgt'])
+    crossover_hours_ct = int(8760 * cf_crossover[cf_crossover['parameter']=='gas_ct'][generator_cost_suffix])
+    crossover_hours_ccgt = int(8760 * cf_crossover[cf_crossover['parameter']=='gas_ccgt'][generator_cost_suffix])
     
     # Sequentially allocate capacity by technology
     capacity_allocated = 0 # Keep track of allocated capacity as it is assigned to every technology
@@ -250,7 +268,7 @@ for sc in range(len(scenarios)):
     genNEWGEN_all_sel = pd.concat([genNEWCOAL_sel, genNEWGASCCGT_sel, genNEWGASCT_sel])
     
     # Write out the new conventional generator buildout file
-    csvOutputGenSel = outputConvBuildoutPath + str(yearAnalysis) + "_conventional_capacity_" + scenarios[sc] + scenario_suffix + ".csv"
+    csvOutputGenSel = outputPathNEWCONV_capacity + str(yearAnalysis) + "_new_conventional_capacity_" + scenarios[sc] + "_" + new_conventional_capacity_folder_suffix + ".csv"
         
     genNEWGEN_all_sel.to_csv(csvOutputGenSel, sep=',', index = False)
 
