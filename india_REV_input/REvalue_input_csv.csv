@@ -1,0 +1,40 @@
+parameter,comment,base,high_cost_coal,55min_gen,hydro_low25p,hydro_high25p,nuclear64,battery15,battery30,wind10LC,wind20LC,wind30LC,solar10LC,solar20LC,solar30LC,wind30LC_solar30LC,wind120HH,solar1A,solar90deg,load_modified
+scenario_suffix,input,ClcC70m,ChcC70m,ClcC55m,ClcC70mH-25,ClcC70mH25,ClcC70mN64,ClcC70mB15,ClcC70mB30,ClcC70mW10lc,ClcC70mW20lc,ClcC70mW30lc,ClcC70mS10lc,ClcC70mS20lc,ClcC70mS30lc,ClcC70mW30lcS30lc,ClcC70mW120,ClcC70mS1A,ClcC70mS90d,ClcC70mLmod
+suggested_scenario_suffix,,ClcC70m,ChcC70m,ClcC55m,ClcC70mH-25,ClcC70mH25,ClcC70mN64,ClcC70mB15,ClcC70mB30,ClcC70mW10lc,ClcC70mW20lc,ClcC70mW30lc,ClcC70mS10lc,ClcC70mS20lc,ClcC70mS30lc,ClcC70mW30lcS30lc,ClcC70mW120,ClcC70mS1A,ClcC70mS90d,ClcC70mLmod
+new_conventional_capacity_folder_suffix,,coallc,coalhc,coallc,coallcH-25,coallcH25,coallcN64,coallcB15,coallcB30,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallcW120,coallcS1A,coallcS90d,coallcLmod
+net_load_folder_suffix,,coallc,coalhc,coallc,coallcH-25,coallcH25,coallcN64,coallcB15,coallcB30,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallcW120,coallcS1A,coallcS90d,coallcLmod
+REvalue_folder_suffix,,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W120_S0d,W80_S1A,W80_S90d,W80_S0d
+generator_cost_suffix,,coallc,coalhc,coallc,coallc,coallc,coallc,coallc,coallc,coallcW10lc,coallcW20lc,coallcW30lc,coallcS10lc,coallcS20lc,coallcS30lc,coallcW30lcS30lc,coallc,coallc,coallc,coallc
+coal_cost,"low, mid, or high. Low is base.",low,high,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low
+coal_cost_suffix,,Clc,Chc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc,Clc
+coal_cost_fkey,,coallc,coalhc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallc
+coal_min_gen,"percentage, 70p is base",70,70,55,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70,70
+coal_min_gen_suffix,,C70m,C70m,C55m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m,C70m
+hydro_energy_mod,"percentage, 0 is base, pos or neg direction",0,0,0,-25,25,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+hydro_energy_mod_suffix,,,,,H-25,H25,,,,,,,,,,,,,,
+nuclear_new_cap,GW. 0 is base. 64 GW is India plan,0,0,0,0,0,64,0,0,0,0,0,0,0,0,0,0,0,0,0
+nuclear_new_cap_suffix,,,,,,,N64,,,,,,,,,,,,,
+battery_cap_gw,gw capacity. 0 is base,0,0,0,0,0,0,15,30,0,0,0,0,0,0,0,0,0,0,0
+battery_cap_gw_suffix,,,,,,,,B15,B30,,,,,,,,,,,
+battery_cap_gw_fkey,,bat0,bat0,bat0,bat0,bat0,bat0,bat15,bat30,bat0,bat0,bat0,bat0,bat0,bat0,bat0,bat0,bat0,bat0,bat0
+wind_cost,percentage change,0,0,0,0,0,0,0,0,10,20,30,0,0,0,30,0,0,0,0
+wind_cost_direction,low or high,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low
+wind_cost_suffix,,,,,,,,,,W10lc,W20lc,W30lc,,,,W30lc,,,,
+wind_cost_fkey,,windLC0,windLC0,windLC0,windLC0,windLC0,windLC0,windLC0,windLC0,windLC10,windLC20,windLC30,windLC0,windLC0,windLC0,windLC30,windLC0,windLC0,windLC0,windLC0
+solar_cost,percentage change,0,0,0,0,0,0,0,0,0,0,0,10,20,30,30,0,0,0,0
+solar_cost_direction,low or high,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low,low
+solar_cost_suffix,,,,,,,,,,,,,S10lc,S20lc,S30lc,S30lc,,,,
+solar_cost_fkey,,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC0,solarLC10,solarLC20,solarLC30,solarLC30,solarLC0,solarLC0,solarLC0,solarLC0
+wind_HH,Hub height in meters. 80m is base,80,80,80,80,80,80,80,80,80,80,80,80,80,80,80,120,80,80,80
+wind_HH_suffix,,,,,,,,,,,,,,,,,W120,,,
+wind_HH_fkey,,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W80,W120,W80,W80,W80
+solar_orient,"degrees to west 0d, 45d, 90d or 1A for 1 axis tracking",0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,0d,1A,90d,0d
+solar_orient_suffix,,,,,,,,,,,,,,,,,,S1A,S90d,
+solar_orient_fkey,,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S0d,S1A,S90d,S0d
+load_year,,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014,2014
+load_year_suffix,,,,,,,,,,,,,,,,,,,,
+load_modifier,"""none"", ""mod"", ""mod1"".",none,none,none,none,none,none,none,none,none,none,none,none,none,none,none,none,none,none,mod
+load_modified_suffix,,,,,,,,,,,,,,,,,,,,Lmod
+dispatch_horizon,"RT or LA. If LA, include days",RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT,RT
+LA_days,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+dispatch_time_suffix,,,,,,,,,,,,,,,,,,,,

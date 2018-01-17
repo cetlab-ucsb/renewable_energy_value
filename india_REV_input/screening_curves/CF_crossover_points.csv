@@ -1,0 +1,8 @@
+parameter,coallc,coalhc,coallcW30lc,coallcS30lc,coallcW30lcS30lc
+gas_ct,0.034,0.034,0.034,0.034,0.034
+gas_ccgt,0.105,0.527,0.105,0.105,0.105
+coal,1,1,1,1,1
+gas_price,10,10,10,10,10
+cap_cost_ct,678,678,678,678,678
+cap_cost_ccgt,775,775,775,775,775
+cap_cost_coal,976,3233,976,976,976

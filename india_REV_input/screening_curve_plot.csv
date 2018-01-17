@@ -1,7 +1,7 @@
-hour,value,technology
-0,126,Coal
-8760,410,Coal
-0,78,CCGT-LNG
-8760,822,CCGT-LNG
-0,65,CT-LNG
-8760,1177,CT-LNG
+hour,technology,coallc,coalhc
+0,CT-LNG,65,65
+8760,CT-LNG,1177,1177
+0,CCGT-LNG,78,78
+8760,CCGT-LNG,822,822
+0,Coal,126,320
+8760,Coal,410,604

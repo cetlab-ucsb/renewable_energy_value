@@ -1,2 +1,2 @@
-scenario,solarPV
-S300W0,300014
+scenario,solarPV,wind
+S300W0,300014,0
