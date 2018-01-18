@@ -1,6 +1,7 @@
-parameter,comment,base,high_cost_coal,55min_gen,hydro_low25p,hydro_high25p,nuclear64,battery15,battery30,wind10LC,wind20LC,wind30LC,solar10LC,solar20LC,solar30LC,wind30LC_solar30LC,wind120HH,solar1A,solar90deg,load_modified
+parameter,comment,base,high_cost_coal,coal_55mingen,hydro_low25p,hydro_high25p,nuclear64,battery15,battery30,wind10LC,wind20LC,wind30LC,solar10LC,solar20LC,solar30LC,wind30LC_solar30LC,wind120HH,solar1A,solar90deg,load_modified
 scenario_suffix,input,ClcC70m,ChcC70m,ClcC55m,ClcC70mH-25,ClcC70mH25,ClcC70mN64,ClcC70mB15,ClcC70mB30,ClcC70mW10lc,ClcC70mW20lc,ClcC70mW30lc,ClcC70mS10lc,ClcC70mS20lc,ClcC70mS30lc,ClcC70mW30lcS30lc,ClcC70mW120,ClcC70mS1A,ClcC70mS90d,ClcC70mLmod
 suggested_scenario_suffix,,ClcC70m,ChcC70m,ClcC55m,ClcC70mH-25,ClcC70mH25,ClcC70mN64,ClcC70mB15,ClcC70mB30,ClcC70mW10lc,ClcC70mW20lc,ClcC70mW30lc,ClcC70mS10lc,ClcC70mS20lc,ClcC70mS30lc,ClcC70mW30lcS30lc,ClcC70mW120,ClcC70mS1A,ClcC70mS90d,ClcC70mLmod
+economic_dispatch_folder_suffix,,ClcC70m,ChcC70m,ClcC55m,ClcC70mH-25,ClcC70mH25,ClcC70mN64,ClcC70mB15,ClcC70mB30,ClcC70m,ClcC70m,ClcC70m,ClcC70m,ClcC70m,ClcC70m,ClcC70m,ClcC70mW120,ClcC70mS1A,ClcC70mS90d,ClcC70mLmod
 new_conventional_capacity_folder_suffix,,coallc,coalhc,coallc,coallcH-25,coallcH25,coallcN64,coallcB15,coallcB30,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallcW120,coallcS1A,coallcS90d,coallcLmod
 net_load_folder_suffix,,coallc,coalhc,coallc,coallcH-25,coallcH25,coallcN64,coallcB15,coallcB30,coallc,coallc,coallc,coallc,coallc,coallc,coallc,coallcW120,coallcS1A,coallcS90d,coallcLmod
 REvalue_folder_suffix,,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W80_S0d,W120_S0d,W80_S1A,W80_S90d,W80_S0d

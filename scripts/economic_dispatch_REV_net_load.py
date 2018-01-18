@@ -38,7 +38,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "base"
+scenario_main = "coal_55mingen"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -62,7 +62,7 @@ inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\R
 inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\" + REvalue_folder_suffix + "\\"
 inputPathNEWCONV_capacity = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"  + new_conventional_capacity_folder_suffix + "\\"
 outputPath = myPath + "renewable_energy_value\\india_REV_output\\"
-outputPathDispatch = outputPath + scenario_suffix + "\\net_load\\"
+outputPathDispatch = outputPath + "\\net_load\\" + net_load_folder_suffix + "\\"
 #outputPathHydroDispatch = outputPath + scenario_suffix + "\\hydro_dispatch\\" 
 outputPathNetLoad = inputPath + "net_load\\" + net_load_folder_suffix + "\\" 
 
@@ -85,7 +85,7 @@ storBATTERY_csv = "battery_storage.csv"
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
+scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
 
 ## Load
 load = pd.read_csv(inputPath + load_csv, sep=',')
@@ -831,7 +831,7 @@ for sc in range(len(scenarios)):
     battery_storage_energy = storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum()
     
     ## SUMMARY TABLE
-    scenarioSummary = pd.DataFrame([[scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation, scenario_main, dispatch_annual_gen_all,
+    scenarioSummary = pd.DataFrame([[scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation, scenario_main, dispatch_annual_gen_all,
                                      potential_gen_vre_2, dispatch_annual_gen_vre, curtailment_annual_gen_vre, dispatch_annual_gen_solarPV, dispatch_annual_gen_wind,
                                      dispatch_annual_gen_hydro, dispatch_annual_gen_nuclear,
                                      discharge_annual_stor_battery, charge_annual_stor_battery,
@@ -849,9 +849,9 @@ for sc in range(len(scenarios)):
     ## ADD SCENARIO RESULTS TO ALL SCENARIO RESULTS TABLE 
     # If the scenario exists, then overwrite the results of the old scenario, else append
     
-    if any(results_all_scenarios.scenario == scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation):
+    if any(results_all_scenarios.scenario == scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation):
         print "Deleted scenario's old result"
-        results_all_scenarios = results_all_scenarios[results_all_scenarios.scenario != scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation]
+        results_all_scenarios = results_all_scenarios[results_all_scenarios.scenario != scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation]
         
     results_all_scenarios = results_all_scenarios.append(scenarioSummary)
     
@@ -859,13 +859,13 @@ for sc in range(len(scenarios)):
     results_all_scenarios.to_csv(outputPath + results_all_scenarios_csv, sep=',', index = False) # write out all existing and new results
     
     ## WRITING THE DISPATCH TABLE TO CSV
-    dispatch_all_ts_annual.to_csv(outputPathDispatch + "nonlinear_dispatch_all_gen_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
+    dispatch_all_ts_annual.to_csv(outputPathDispatch + "nonlinear_dispatch_all_gen_" + scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
     
     ## WRITING THE NET NET LOAD TIME SERIES TO CSV - TO BE USED IN SCREENING CURVES CAPACITY EXPANSION SCRIPT
     netnetload_ts_annual.columns = ['net_load_final']
     netnetload_ts_annual = pd.concat([netnetload_ts_annual, dispatch_all_ts_annual[['HYDRO-STORAGE', 'Bat-Storage-Discharge', 'Bat-Storage-Charge']]], axis=1)
     netnetload_ts_annual.index.names = ['Timepoint']
-    netnetload_ts_annual.to_csv(outputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
+    netnetload_ts_annual.to_csv(outputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation + ".csv", sep=',', index = True)
 
 elapsed_time = (time.time() - start_time)/(60)
 print str(elapsed_time) + " minutes"

@@ -37,7 +37,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "base"
+scenario_main = "coal_55mingen"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -146,7 +146,7 @@ for sc in range(len(scenarios)):
     
     ## SCREENING CURVE CONVENTIONAL BUILDOUT
     ## Read the net load csv
-    net_load_hydro_input = pd.read_csv(inputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + scenario_suffix + scenario_suffix_operation + ".csv", sep=',', index_col='Timepoint')
+    net_load_hydro_input = pd.read_csv(inputPathNetLoad + "net_load_hydro_" + scenarios[sc] + "_" + net_load_folder_suffix + scenario_suffix_operation + ".csv", sep=',', index_col='Timepoint')
     
     # Get the net load
     net_load = pd.DataFrame(net_load_hydro_input['net_load_final'])
