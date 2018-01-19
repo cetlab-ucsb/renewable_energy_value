@@ -38,7 +38,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "coal_55mingen"
+scenario_main = "battery30"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -319,6 +319,8 @@ for sc in range(len(scenarios)):
     # If battery storage exists
     if storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum() == 0:
         battery_storage_flag = 0
+    else:
+        battery_storage_flag = 1
     
     
     '''
