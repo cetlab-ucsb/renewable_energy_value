@@ -155,6 +155,7 @@ gen_capacity,generator,type,var_cost
 660.0,COAL-NEW-154,coal,2153.0
 660.0,COAL-NEW-155,coal,2154.0
 660.0,COAL-NEW-156,coal,2155.0
+660.0,COAL-NEW-157,coal,2156.0
 200.0,GAS-CT-NEW-1,gas_ct,8200.0
 200.0,GAS-CT-NEW-2,gas_ct,8201.0
 200.0,GAS-CT-NEW-3,gas_ct,8202.0
@@ -302,11 +303,3 @@ gen_capacity,generator,type,var_cost
 200.0,GAS-CT-NEW-145,gas_ct,8344.0
 200.0,GAS-CT-NEW-146,gas_ct,8345.0
 200.0,GAS-CT-NEW-147,gas_ct,8346.0
-200.0,GAS-CT-NEW-148,gas_ct,8347.0
-200.0,GAS-CT-NEW-149,gas_ct,8348.0
-200.0,GAS-CT-NEW-150,gas_ct,8349.0
-200.0,GAS-CT-NEW-151,gas_ct,8350.0
-200.0,GAS-CT-NEW-152,gas_ct,8351.0
-200.0,GAS-CT-NEW-153,gas_ct,8352.0
-200.0,GAS-CT-NEW-154,gas_ct,8353.0
-200.0,GAS-CT-NEW-155,gas_ct,8354.0
