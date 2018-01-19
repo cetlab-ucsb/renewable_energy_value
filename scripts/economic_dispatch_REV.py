@@ -306,6 +306,8 @@ for sc in range(len(scenarios)):
     # If battery storage exists
     if storBATTERY_input['stor_energy'][storBATTERY_input['type']=='bat_storage'].sum() == 0:
         battery_storage_flag = 0
+    else:
+        battery_storage_flag = 1
 
     
     
