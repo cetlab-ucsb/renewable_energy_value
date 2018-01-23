@@ -37,7 +37,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "battery30"
+scenario_main = "wind120HH_solar1A"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
