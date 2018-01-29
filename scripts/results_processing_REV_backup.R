@@ -35,26 +35,23 @@ library(scales)
 
 ## INPUTS TO SCRIPT ##############################################################################################
 
-working.directory <- "G:/Electricity_Models/renewable_energy_value/"
-input.folder <- "india_REV_input/"
-output.folder <- "india_REV_output/"
+working.directory <- "G:/SWITCH/india_ED/"
+input.folder <- "india_ED_input/"
+output.folder <- "india_ED_output/"
 #results.folder <- "processed_results_coalHC_coalLC_SolarLC20p/"
-input.results.fname <- "results_all_scenarios.csv"
+input.results.fname <- "results_all_scenarios_lowCapCostCoal_55min_70min_08312017.csv"
 emissions.fname <- "emissions.csv"
+gen.cost.conv.fname <- "generator_cost_conv.csv"
+gen.cost.vre.fname <- "generator_cost_vre.csv"
 gen.cost.fname <- "generator_cost_all.csv"
 existing.gen.capacity.fname <- "existing_generation.csv"
-scenario.inputs.fname <- "REvalue_input_csv.csv"
 
-# USER SCENARIO INPUTS
-scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", 
-               "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC") # These are the cost scenarios from the generator cost csv. 
-
-#scenarios.dispatch <- c("coalLC_55min", "coalLC_70min") # Choose the dispatch scenario based on the column in results.csv. Set it in the same order as the scenarios. 
+scenarios <- c("coalLC", "coalLC") # These are the cost scenarios from the generator cost csv. 
+scenarios.dispatch <- c("coalLC_55min", "coalLC_70min") # Choose the dispatch scenario based on the column in results.csv. Set it in the same order as the scenarios. 
 # vre_cost <- "low_solar_20pc" # "base", "low_wind_10pc", "low_solar_10pc", "low_vre_10pc", "low_wind_20pc", "low_solar_20pc", "low_vre_20pc"
 INR_USD <- 65
 disc_rate <- 0.07 # CERC discount rate is 10.8%
 plant_life <- 25 # in years
-battery_life <- 20 # in years
 plot.individual.scenario = "yes"
 
 
@@ -77,20 +74,20 @@ g_legend<-function(a.gplot){
 results.input <- fread(paste0(output.folder, input.results.fname))
 results.input <- results.input[order(rank)]
 emissions <- fread(paste0(input.folder, emissions.fname))
+gen.cost.conv <- fread(paste0(input.folder, gen.cost.conv.fname))
+gen.cost.vre <- fread(paste0(input.folder, gen.cost.vre.fname))
 gen.cost <- fread(paste0(input.folder, gen.cost.fname))
 existing.gen.capacity <- fread(paste0(input.folder, existing.gen.capacity.fname))
-scenario.inputs <- fread(paste0(input.folder, scenario.inputs.fname))
 
 ## Lists for saving plots
 p_vre <- list()
-p_vre_curt <- list()
 p_vre_sys <- list()
 p_value <- list()
 p_vre_share <- list()
 p_curt <- list()
 p_avg_em <- list()
-p_avg_em_bar <- list()
 p_mar_em <- list()
+p_em_combo <- list()
 p_em_combo <- list()
 p_em_red_perc <- list()
 p_em_tot <- list()
@@ -98,53 +95,58 @@ p_vre_share_uncurt <- list()
 p_buildout <- list()
 p_vre_sys_pLoad <- list()
 
-
 # Capital recovery factor (CRF)
 crf <- (disc_rate*(1+disc_rate)^plant_life)/((1+disc_rate)^plant_life - 1)
-crf.battery <- (disc_rate*(1+disc_rate)^battery_life)/((1+disc_rate)^battery_life - 1)
 
 # Results folder
-# if(length(scenarios) == 1){
-#   results.folder <- paste0("results/processed_results_", scenarios[1], "-", scenarios.dispatch[1], "/")
-# }else if(length(scenarios) == 2){
-#   results.folder <- paste0("results/processed_results_", scenarios[1], "-", scenarios.dispatch[1], "_", scenarios[2], "-", scenarios.dispatch[2], "/")
-# }
-#ifelse(!dir.exists(file.path(results.folder)), dir.create(file.path(results.folder), recursive=TRUE), FALSE)
-
-# Split the scenario column into 2. This should have been done in the python script
-results.input[, c("scenario", "scenario_econ_dispatch") := tstrsplit(scenario, "_", fixed=TRUE)]
-
-# Results processed data table
-results.processed <- data.table()
-results.costs.emissions.processed <- data.table()
+if(length(scenarios) == 1){
+  results.folder <- paste0("results/processed_results_", scenarios[1], "-", scenarios.dispatch[1], "/")
+}else if(length(scenarios) == 2){
+  results.folder <- paste0("results/processed_results_", scenarios[1], "-", scenarios.dispatch[1], "_", scenarios[2], "-", scenarios.dispatch[2], "/")
+}
+ifelse(!dir.exists(file.path(results.folder)), dir.create(file.path(results.folder), recursive=TRUE), FALSE)
 
 for (sc in 1:length(scenarios)){
   print(sc)
   
-  # Scenario names for scenario abbreviations and generator cost
-  sc.gen.cost <- scenario.inputs[parameter == "generator_cost_suffix", get(scenarios[sc])]
-  sc.econ.dispatch <- scenario.inputs[parameter == "economic_dispatch_folder_suffix", get(scenarios[sc])]
-  sc.sensitivity <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
+  # Choose data based on dispatch scenario
+  
+  results <- results.input[scenario_dispatch == scenarios.dispatch[sc], ]
   
   
-  # Choose data based on scenario
-  results <- results.input[scenario_econ_dispatch == sc.econ.dispatch, ]
-  results[,scenario_sensitivity := sc.sensitivity] # Specify the correct scenario name
-  results[,scenario_main := scenarios[sc]] # Specify the correct main scenario name
+#   
+#   # Choose data based on high or low RE cost
+#   if(vre_cost == "base"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_vre_base]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_vre_base]/10^3]
+#   }else if(vre_cost == "low_wind_10pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_wind_low_10pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_wind_low_10pc]/10^3]
+#   }else if(vre_cost == "low_solar_10pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_solar_low_10pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_solar_low_10pc]/10^3]
+#   }else if(vre_cost == "low_vre_10pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_vre_low_10pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_vre_low_10pc]/10^3]
+#   }else if(vre_cost == "low_wind_20pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_wind_low_20pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_wind_low_20pc]/10^3]
+#   }else if(vre_cost == "low_solar_20pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_solar_low_20pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_solar_low_20pc]/10^3]
+#   }else if(vre_cost == "low_vre_20pc"){
+#     results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * gen.cost.vre[technology=="solarPV", annualized_fc_vre_low_20pc]/10^3]
+#     results[,ann_cap_cost_wind_mil:= capacity_wind_MW * gen.cost.vre[technology=="wind", annualized_fc_vre_low_20pc]/10^3]
+#   }
+  
   
   # Choose data based on scenario anc calculate annual 
-  ann_fc_coal_cost <- gen.cost[technology=="coal" & cost_type == "capital", get(sc.gen.cost)] * crf + gen.cost[technology=="coal" & cost_type == "om", get(sc.gen.cost)]
-  ann_fc_ccgt_cost <- gen.cost[technology=="ccgt" & cost_type == "capital", get(sc.gen.cost)] * crf + gen.cost[technology=="ccgt" & cost_type == "om", get(sc.gen.cost)]
-  ann_fc_ct_cost <- gen.cost[technology=="ct" & cost_type == "capital", get(sc.gen.cost)] * crf + gen.cost[technology=="ct" & cost_type == "om", get(sc.gen.cost)]
-  ann_fc_solar_cost <- gen.cost[technology=="solarPV" & cost_type == "capital", get(sc.gen.cost)] * crf + gen.cost[technology=="solarPV" & cost_type == "om", get(sc.gen.cost)]
-  ann_fc_wind_cost <- gen.cost[technology=="wind" & cost_type == "capital", get(sc.gen.cost)] * crf + gen.cost[technology=="wind" & cost_type == "om", get(sc.gen.cost)]
-  ann_fc_battery_cost <- gen.cost[technology=="battery" & cost_type == "capital", get(sc.gen.cost)] * crf.battery + gen.cost[technology=="battery" & cost_type == "om", get(sc.gen.cost)]
+  ann_fc_coal_cost <- gen.cost[technology=="coal" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="coal" & cost_type == "om", get(scenarios[sc])]
+  ann_fc_ccgt_cost <- gen.cost[technology=="ccgt" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="ccgt" & cost_type == "om", get(scenarios[sc])]
+  ann_fc_ct_cost <- gen.cost[technology=="ct" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="ct" & cost_type == "om", get(scenarios[sc])]
+  ann_fc_solar_cost <- gen.cost[technology=="solarPV" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="solarPV" & cost_type == "om", get(scenarios[sc])]
+  ann_fc_wind_cost <- gen.cost[technology=="wind" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="wind" & cost_type == "om", get(scenarios[sc])]
  
-  # ann_fc_coal_cost <- gen.cost[technology=="coal" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="coal" & cost_type == "om", get(scenarios[sc])]
-  # ann_fc_ccgt_cost <- gen.cost[technology=="ccgt" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="ccgt" & cost_type == "om", get(scenarios[sc])]
-  # ann_fc_ct_cost <- gen.cost[technology=="ct" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="ct" & cost_type == "om", get(scenarios[sc])]
-  # ann_fc_solar_cost <- gen.cost[technology=="solarPV" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="solarPV" & cost_type == "om", get(scenarios[sc])]
-  # ann_fc_wind_cost <- gen.cost[technology=="wind" & cost_type == "capital", get(scenarios[sc])] * crf + gen.cost[technology=="wind" & cost_type == "om", get(scenarios[sc])]
   
   #### Estimate total annual capacity costs
   results[,ann_cap_cost_coal_mil:= new_capacity_coal_MW * ann_fc_coal_cost/10^3]
@@ -152,24 +154,19 @@ for (sc in 1:length(scenarios)){
   results[,ann_cap_cost_ct_mil:= new_capacity_gas_ct_MW * ann_fc_ct_cost/10^3]
   results[,ann_cap_cost_solar_mil:= capacity_solarPV_MW * ann_fc_solar_cost/10^3]
   results[,ann_cap_cost_wind_mil:= capacity_wind_MW * ann_fc_wind_cost/10^3]
-  results[,ann_cap_cost_battery_mil:= capacity_bat_storage_MW * ann_fc_battery_cost/10^3]
 
   results[,total_cost_new_conv:= ann_cap_cost_coal_mil + ann_cap_cost_ccgt_mil + ann_cap_cost_ct_mil]
   results[,total_cost_vre:= ann_cap_cost_solar_mil + ann_cap_cost_wind_mil]
   
   # Capacity, energy and total costs
-  results[,total_cost_capacity:= total_cost_new_conv + total_cost_vre + ann_cap_cost_battery_mil] # Conventional gen + RE gens + battery
+  results[,total_cost_capacity:= total_cost_new_conv + total_cost_vre]
   results[,total_cost_energy:= dispatch_cost/INR_USD/10^6]
   results[, total_cost:= total_cost_capacity + total_cost_energy]
   
   # Cost of No RE scenario
-  total_cost_new_conv_noRE <- results[scenario=="S0W0", total_cost_capacity]
+  total_cost_new_conv_noRE <- results[scenario=="S0W0", total_cost_new_conv]
   total_cost_energy_noRE <- results[scenario=="S0W0", total_cost_energy]
   total_cost_noRE <- total_cost_new_conv_noRE + total_cost_energy_noRE
-  
-  # Alternate Cost of No RE scenario for battery scenarios (USE no RE costs from base scenario without any battery B0)
-  # One option is in the results.inputs data table replace the S0W0 scenarios for B15 and B30 with B0 scenario results. That's the easiest. 
-  
   
   # Total cost differences / increases between scenarios and No RE scenario
   results[scenario!="S0W0", system_cost_vre:= total_cost - total_cost_noRE]
@@ -178,14 +175,10 @@ for (sc in 1:length(scenarios)){
   results[,cost_vre_pMWh:= total_cost_vre*10^6/ann_gen_vre_MWh]
   results[,cost_vre_nocurt_pMWh:= total_cost_vre*10^6/ann_gen_vre_nocurt_MWh]
   
-  # Cost of battery storage per MWh
-  results[,cost_battery_pMWh:= ann_cap_cost_battery_mil*10^6/ann_gen_vre_MWh]
-  results[,cost_battery_nocurt_pMWh:= ann_cap_cost_battery_mil*10^6/ann_gen_vre_nocurt_MWh]
-  
   # Value per MWh
   results[scenario!="S0W0",capacity_value_pMWh:= (total_cost_new_conv_noRE - total_cost_new_conv)*10^6/ann_gen_vre_MWh]
   results[scenario!="S0W0",energy_value_pMWh:= (total_cost_energy_noRE - total_cost_energy)*10^6/ann_gen_vre_MWh]
-  results[scenario!="S0W0", system_cost_vre_pMWh:= cost_vre_pMWh + cost_battery_pMWh - capacity_value_pMWh - energy_value_pMWh]
+  results[scenario!="S0W0", system_cost_vre_pMWh:= cost_vre_pMWh - capacity_value_pMWh - energy_value_pMWh]
   
   # Additional cost of implementing VRE per MWh load served
   results[scenario!="S0W0", system_cost_add_pMWh_load:= (total_cost - total_cost_noRE)*10^6/ ann_gen_total_MWh]
@@ -218,7 +211,7 @@ for (sc in 1:length(scenarios)){
   results[scenario!="S0W0", cost_emissions_reduction_pTonneCO2_avg:= system_cost_vre / total_emissions_reduced_milTonnes]
   
   # Marginal and average cost of emissions mitigation
-  results.costs.emissions <- results[, .(scenario, scenario_main, scenario_sensitivity, scenario_build, scenario_split, total_cost, total_emissions_co2_milTonnes)]
+  results.costs.emissions <- results[, .(scenario, scenario_build, scenario_split, total_cost, total_emissions_co2_milTonnes)]
   results.costs.emissions <- rbind(results.costs.emissions[rep(1, 4),], results.costs.emissions) # repeat the 0-0 row, so we can use difference by group
   results.costs.emissions[scenario=="S0W0", scenario_split:= unique(results.costs.emissions[scenario!="S0W0", scenario_split])]
   results.costs.emissions[, system_cost_inc_marginal:= c(NA, diff(total_cost)), by=scenario_split] # System cost increase
@@ -241,46 +234,18 @@ for (sc in 1:length(scenarios)){
   total_cap_new_conv_noRE <- results[scenario=="S0W0", new_capacity_coal_MW + new_capacity_gas_ccgt_MW + new_capacity_gas_ct_MW]
   results[scenario!="S0W0", avoided_conv_cap_mw_perVREmw:= (total_cap_new_conv_noRE - (new_capacity_coal_MW + new_capacity_gas_ccgt_MW + new_capacity_gas_ct_MW))/capacity_vre_MW]
   
-  results.processed <- rbind(results.processed, results)
-  results.costs.emissions.processed <- rbind(results.costs.emissions.processed, results.costs.emissions)
+  ## Plots ##
+  theme_set(theme_cowplot(font_size=14))
+  colors_RD3 <- c("#fd8d3c", "#2b8cbe", "#969696")
+  colors_RD7 <- c("#5588bb", "#66bbbb", "#aa6644", "#99bb55","#ee9944", "#444466", "#bb5555")
+  colors_emissions_RD4 <- c("#d95f0e", "#999999", "#ca0020", "#a6611a", "#3a3938" )
   
-}
+  width.bar = 0.7
+  positions <- c("S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
+  positions2 <- c("0-100", "25-75", "50-50", "75-25", "100-0")
   
-
-
-##############################################################
-## INDIVIDUAL PLOTS FOR INDIVIDUAL SCENARIOS #################
-##############################################################
-
-## USER INPUT: Scenarios for individual plots ################
-scenarios <- c("base", "coal_55mingen", "battery15", "battery30", "wind120HH_solar1A")
-scenarios.sensitivity <- ""
-
-## Theme ##
-theme_set(theme_cowplot(font_size=14))
-colors_RD3 <- c("#fd8d3c", "#2b8cbe", "#969696")
-colors_RD5 <- c("#2b8cbe", "#fd8d3c", "#969696")
-colors_RD7 <- c("#5588bb", "#66bbbb", "#aa6644", "#99bb55","#ee9944", "#444466", "#bb5555")
-colors_emissions_RD4 <- c("#d95f0e", "#999999", "#ca0020", "#a6611a", "#3a3938" )
-
-width.bar = 0.7
-
-positions <- c("S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
-positions2 <- c("0-100", "25-75", "50-50", "75-25", "100-0")
-positions3 <- c("S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
-#positions.tech <- c("Existing Other", "Existing Nuclear", "Existing Hydro RoR", "Existing Hydro Storage", "Existing Diesel", "Existing Gas CT", "Existing Gas CCGT", "Existing Coal", "Wind", "Solar PV", "New Gas CT", "New Gas CCGT", "New Coal")
-positions.tech <- c("New Coal", "New Gas CCGT", "New Gas CT", "Solar PV", "Wind", "Existing Coal", "Existing Gas CCGT", "Existing Gas CT", "Existing Diesel", "Existing Hydro Storage", "Existing Hydro RoR", "Existing Nuclear", "Existing Other")
-
-
-for (sc in 1:length(scenarios)){
-  scenarios.sensitivity[[sc]] <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
-}
-
-for (sc in 1:length(scenarios)){
-  print(sc)
-  
-  ## VRE cost per MWh - both before and after curtailment
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, cost_vre_pMWh, cost_vre_nocurt_pMWh)]
+  ## VRE cost per MWh
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, cost_vre_pMWh, cost_vre_nocurt_pMWh)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build"))
   data.plot[variable=="cost_vre_nocurt_pMWh", variable:= "No Curtailment"][variable=="cost_vre_pMWh", variable:= "After Curtailment"]
@@ -293,28 +258,11 @@ for (sc in 1:length(scenarios)){
     labs(y = "Average Levelized Cost of VRE Generation \n USD/MWh", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh")) +
-    background_grid()
-  
-  ## VRE cost per MWh - Only after curtailment
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, cost_vre_pMWh)]
-  data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
-  data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build"))
-  data.plot[variable=="cost_vre_pMWh", variable:= "Cost of RE"]
-  
-  # data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario)) # Use if sorting screws up
-  
-  p_vre_curt[[sc]] <- ggplot(data.plot, aes(scenario, value, fill = variable)) +
-    geom_bar(stat = "identity", width = width.bar, position="dodge") +
-    facet_wrap(~scenario_build, scales = "free_x") + 
-    labs(y = "Average Levelized Cost of VRE Generation \n USD/MWh (after curtailment)", x = NULL) +
-    scale_fill_manual(values = colors_RD5) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh")) +
+    scale_y_continuous(limits = c(0, 120), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh")) +
     background_grid()
   
   ## System cost for VRE implementation per MWh VRE absorbed
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, rank, system_cost_vre_pMWh)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, rank, system_cost_vre_pMWh)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   # data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario)) # Use if sorting screws up
   
@@ -324,11 +272,11 @@ for (sc in 1:length(scenarios)){
     labs(y = "Average Additional Cost of VRE Implementation \nUSD/MWh of VRE (after curtailment)", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
-    scale_y_continuous(limits = c(-20, 80), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
+    scale_y_continuous(limits = c(0, 80), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
     background_grid()
   
   ## System cost for VRE implementation per MWh Load served
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, rank, system_cost_add_pMWh_load)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, rank, system_cost_add_pMWh_load)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   # data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario)) # Use if sorting screws up
   
@@ -338,13 +286,13 @@ for (sc in 1:length(scenarios)){
     labs(y = "Average Additional Cost of VRE Implementation \nUSD/MWh of Load", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
-    scale_y_continuous(limits = c(-5, 15), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of Load")) +
+    scale_y_continuous(limits = c(0, 15), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of Load")) +
     background_grid()
   
   
   
   ##Energy and capacity value per MWh
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, energy_value_pMWh, capacity_value_pMWh)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, energy_value_pMWh, capacity_value_pMWh)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build"))
   data.plot[variable=="capacity_value_pMWh", variable:= "Capacity Value"][variable=="energy_value_pMWh", variable:= "Energy Value"]
@@ -355,12 +303,12 @@ for (sc in 1:length(scenarios)){
     labs(y = "Average Value of VRE \nUSD/MWh of VRE (after curtailment)", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
+    scale_y_continuous(limits = c(0, 50), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
     background_grid()
   
   
   ## VRE share
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, vre_share_nocurt, vre_share_after_curt)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, vre_share_nocurt, vre_share_after_curt)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build"))
   data.plot[variable=="vre_share_nocurt", variable:= "No Curtailment"][variable=="vre_share_after_curt", variable:= "With Curtailment"]
@@ -371,7 +319,7 @@ for (sc in 1:length(scenarios)){
     labs(y = "VRE share of total electricity generation", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(0, 0.5), labels=percent) +
+    scale_y_continuous(labels=percent) +
     background_grid()
   
   # VRE potential share - only uncurtailed
@@ -382,12 +330,12 @@ for (sc in 1:length(scenarios)){
     labs(y = "Potential VRE share of total electricity generation", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1), legend.position="none", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(0, 0.5), labels=percent) +
+    scale_y_continuous(labels=percent) +
     background_grid()
   
   
   ## VRE curtailment
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, rank, vre_curt)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, rank, vre_curt)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   
   p_curt[[sc]] <- ggplot(data.plot, aes(scenario, vre_curt, fill = scenario_build)) +
@@ -396,13 +344,13 @@ for (sc in 1:length(scenarios)){
     labs(y = "Annual VRE curtailment", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
-    scale_y_continuous(limits = c(0, 0.6), labels=percent) +
+    scale_y_continuous(labels=percent) +
     background_grid()
   
 
   ## EMISSIONS
   # % of emissions reduced
-  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, emissions_reduction, total_emissions_co2_milTonnes)]
+  data.plot <- results[scenario!="S0W0", .(scenario, scenario_build, emissions_reduction, total_emissions_co2_milTonnes)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
   p_em_red_perc[[sc]] <- ggplot(data.plot, aes(scenario, emissions_reduction, fill = scenario_build)) +
     geom_bar(stat = "identity", width = width.bar) +
@@ -410,10 +358,10 @@ for (sc in 1:length(scenarios)){
     labs(y = expression(CO[2]~Emissions~Reduction~from~No~RE~Scenario), x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
     theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="none") +
-    scale_y_continuous(limits = c(0, 0.5), labels=percent) +
+    scale_y_continuous(labels=percent) +
     background_grid()
   
-  # Total emissions 
+  # Total emissions reduction
   p_em_tot[[sc]] <- ggplot(data.plot, aes(scenario, total_emissions_co2_milTonnes, fill = scenario_build)) +
     geom_bar(stat = "identity", width = width.bar) +
     facet_wrap(~scenario_build, scales = "free_x") + 
@@ -423,8 +371,8 @@ for (sc in 1:length(scenarios)){
     background_grid()
   
   ## CO2 emissions cost of mitigation
-  # Average cost of emissions
-  data.plot <- results.costs.emissions.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
+  # Average emissions
+  data.plot <- results.costs.emissions[scenario!="S0W0", .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
   data.plot$scenario_split <- reorder.factor(data.plot$scenario_split, new.order=positions2)
   # data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario)) # Use if sorting screws up
   
@@ -433,23 +381,11 @@ for (sc in 1:length(scenarios)){
     labs(y = expression(Average~Cost~of~CO[2]~Emissions~Mitigation~(USD/tonne~CO[2])), x = NULL) +
     scale_fill_manual(values = colors_RD7) + 
     theme(axis.text.x = element_text(angle=0, vjust=1), legend.position = "bottom", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(-20, 100)) +
+    scale_y_continuous(limits = c(-10, 120)) +
     background_grid()
   
-  data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
-  
-  p_avg_em_bar[[sc]] <- ggplot(data.plot, aes(scenario, cost_emissions_reduction_pTonneCO2_average, fill = scenario_build)) +
-    geom_bar(stat = "identity", width = width.bar) +
-    facet_wrap(~scenario_build, scales = "free_x") + 
-    labs(y = expression(Average~Cost~of~CO[2]~Emissions~Mitigation~(USD/tonne~CO[2])), x = NULL) +
-    scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="none") +
-    scale_y_continuous(limits = c(-20, 100)) +
-    background_grid()
-  
-  
-  # Marginal cost of emissions
-  data.plot <- results.costs.emissions.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
+  # Marginal emissions
+  data.plot <- results.costs.emissions[scenario!="S0W0", .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
   data.plot$scenario_split <- reorder.factor(data.plot$scenario_split, new.order=positions2)
   #data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario_split)) # Use if sorting screws up
   
@@ -458,12 +394,12 @@ for (sc in 1:length(scenarios)){
     labs(y = expression(Marginal~Cost~of~CO[2]~Emissions~Mitigation~(USD/tonne~CO[2])), x = NULL) +
     scale_fill_manual(values = colors_RD7) + 
     theme(axis.text.x = element_text(angle=0, vjust=1), legend.position = "bottom", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(-100, 600)) +
+    scale_y_continuous(limits = c(-10, 600)) +
     background_grid()
   
   
   ## Average and marginal emissions cost 
-  data.plot <- results.costs.emissions.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
+  data.plot <- results.costs.emissions[scenario!="S0W0", .(scenario, scenario_build, scenario_split, cost_emissions_reduction_pTonneCO2_marginal, cost_emissions_reduction_pTonneCO2_average)]
   data.plot$scenario_split <- reorder.factor(data.plot$scenario_split, new.order=positions2)
   data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build", "scenario_split"))
   data.plot[variable=="cost_emissions_reduction_pTonneCO2_marginal", variable:= "Marginal Cost"][variable=="cost_emissions_reduction_pTonneCO2_average", variable:= "Average Cost"]
@@ -473,11 +409,11 @@ for (sc in 1:length(scenarios)){
     labs(y = expression(Cost~of~CO[2]~Emissions~Mitigation~(USD/tonne~CO[2])), x = NULL) +
     scale_fill_manual(values = colors_RD7) + 
     theme(axis.text.x = element_text(angle=0, vjust=1), legend.position = "bottom", legend.title = element_blank()) +
-    scale_y_continuous(limits = c(-20, 600)) +
+    scale_y_continuous(limits = c(-10, 600)) +
     background_grid()
   
   ## Capacity buildout stack #########
-  capacity.buildout <- results.processed[scenario_main == scenarios[sc], .(scenario, scenario_build, new_capacity_coal_MW, new_capacity_gas_ccgt_MW, new_capacity_gas_ct_MW, capacity_solarPV_MW, capacity_wind_MW)]
+  capacity.buildout <- results[, .(scenario, scenario_build, new_capacity_coal_MW, new_capacity_gas_ccgt_MW, new_capacity_gas_ct_MW, capacity_solarPV_MW, capacity_wind_MW)]
   setnames(capacity.buildout, c("new_capacity_coal_MW", "new_capacity_gas_ccgt_MW", "new_capacity_gas_ct_MW", "capacity_solarPV_MW", "capacity_wind_MW"), c("New Coal", "New Gas CCGT", "New Gas CT", "Solar PV", "Wind"))
   capacity.buildout.melt <- melt(capacity.buildout, id.vars = c("scenario", "scenario_build"))
   setnames(capacity.buildout.melt, c("variable", "value"), c("technology", "capacity_MW"))
@@ -500,8 +436,11 @@ for (sc in 1:length(scenarios)){
   capacity.all[technology=="other", technology:= "Existing Other"]
   
   # Plot the buildout
+  positions2 <- c("S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
+  #positions.tech <- c("Existing Other", "Existing Nuclear", "Existing Hydro RoR", "Existing Hydro Storage", "Existing Diesel", "Existing Gas CT", "Existing Gas CCGT", "Existing Coal", "Wind", "Solar PV", "New Gas CT", "New Gas CCGT", "New Coal")
+  positions.tech <- c("New Coal", "New Gas CCGT", "New Gas CT", "Solar PV", "Wind", "Existing Coal", "Existing Gas CCGT", "Existing Gas CT", "Existing Diesel", "Existing Hydro Storage", "Existing Hydro RoR", "Existing Nuclear", "Existing Other")
   capacity.all$technology <- reorder.factor(capacity.all$technology, new.order=positions.tech)
-  capacity.all$scenario <- reorder.factor(capacity.all$scenario, new.order=positions3)
+  capacity.all$scenario <- reorder.factor(capacity.all$scenario, new.order=positions2)
   capacity.all <- capacity.all[order(-technology)]
   
   colors.capacity.buildout <- c("#CC79A7", "#D55E00", "#56B4E9", "#0072B2", "#000000", "#CC3333", "#FF6600", "#999999", "#FF9900", "#006699", "#CC3333", "#FF6600", "#999999")
@@ -519,21 +458,10 @@ for (sc in 1:length(scenarios)){
 ## Combo Plots #############
 if(plot.individual.scenario == "yes"){
   for(sc in 1:length(scenarios)){
-  
-    # Get the scenario suffix corresponding to the scenario name
-    sc.sensitivity <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
-    
-    results.folder <- paste0("results/processed_results_", scenarios[sc], "-", scenarios.sensitivity[sc], "/")
-    ifelse(!dir.exists(file.path(results.folder)), dir.create(file.path(results.folder), recursive=TRUE), FALSE)
-    
-    
-    file_suffix <- paste0(scenarios.sensitivity[sc])
-    
-    ## Levelized cost of VRE before and after curtailment
-    ggsave(file = paste0(results.folder, "vre_levelized-cost-", file_suffix, ".png"), p_vre[[sc]])
+    file_suffix <- paste0(scenarios[sc], "-", scenarios.dispatch[sc])
     
     ## Levelized cost of VRE after curtailment
-    ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-", file_suffix, ".png"), p_vre_curt[[sc]])
+    ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-", file_suffix, ".png"), p_vre[[sc]])
     
     ## System cost of VRE per MWh VRE absorbed
     ggsave(file = paste0(results.folder, "vre_integration-cost-", file_suffix, ".png"), p_vre_sys[[sc]])
@@ -558,8 +486,6 @@ if(plot.individual.scenario == "yes"){
     
     ggsave(file = paste0(results.folder, "emissions-avg-", file_suffix, ".png"), p_avg_em[[sc]])
     
-    ggsave(file = paste0(results.folder, "emissions-avg-bar-", file_suffix, ".png"), p_avg_em_bar[[sc]])
-    
     ## Emissions average and marginal combined in one
     plot.legend <- g_legend(p_em_combo[[1]])
     ggsave(file = paste0(results.folder, "emissions-avg-mar-", file_suffix, ".png"), p_em_combo[[sc]])
@@ -583,15 +509,6 @@ if(plot.individual.scenario == "yes"){
     
   }
 }
-
-
-
-
-
-
-
-
-
 
 
 if(length(scenarios) > 1){
