@@ -25,7 +25,7 @@ library(cowplot)
 library(dplyr)
 library(rgdal) # for maps
 library(ggmap) # comes with a them_nothing() function
-library(Cairo) # creates high quality vector and bitmap images
+#library(Cairo) # creates high quality vector and bitmap images
 library(rgeos) # for maps
 library(maptools) # for maps
 library(bit64)
@@ -35,7 +35,15 @@ library(scales)
 
 ## INPUTS TO SCRIPT ##############################################################################################
 
-working.directory <- "G:/Electricity_Models/renewable_energy_value/"
+# working.directory 
+switch(Sys.info()[['sysname']],
+       Windows= {"G:/Electricity_Models/renewable_energy_value/"},
+       Linux  = {print("I'm a penguin.")},
+       Darwin = {working.directory <- "/Volumes/RD External/Electricity_Models/renewable_energy_value/"})
+## Set working directory ##
+setwd(working.directory)
+
+
 input.folder <- "india_REV_input/"
 output.folder <- "india_REV_output/"
 #results.folder <- "processed_results_coalHC_coalLC_SolarLC20p/"
@@ -58,9 +66,6 @@ battery_life <- 20 # in years
 plot.individual.scenario = "yes"
 
 
-## Set working directory ##
-setwd(working.directory)
-
 # -----------------------------------------------------------------------------|
 # FUNCTION TO GRAB LEGEND
 #------------------------------------------------------------------------------|
@@ -81,9 +86,15 @@ gen.cost <- fread(paste0(input.folder, gen.cost.fname))
 existing.gen.capacity <- fread(paste0(input.folder, existing.gen.capacity.fname))
 scenario.inputs <- fread(paste0(input.folder, scenario.inputs.fname))
 
+
+# Results processed data table
+results.processed <- data.table()
+results.costs.emissions.processed <- data.table()
+
 ## Lists for saving plots
 p_vre <- list()
 p_vre_curt <- list()
+p_vre_storage_curt <- list()
 p_vre_sys <- list()
 p_value <- list()
 p_vre_share <- list()
@@ -114,9 +125,10 @@ crf.battery <- (disc_rate*(1+disc_rate)^battery_life)/((1+disc_rate)^battery_lif
 # Split the scenario column into 2. This should have been done in the python script
 results.input[, c("scenario", "scenario_econ_dispatch") := tstrsplit(scenario, "_", fixed=TRUE)]
 
-# Results processed data table
-results.processed <- data.table()
-results.costs.emissions.processed <- data.table()
+## Replace the S0W0 scenario rows for all battery scenarios with S0W0 base scenario ##
+cols.to.replace <- colnames(results.input[,!c("scenario_main", "scenario_econ_dispatch")])
+results.input[grepl("bat", scenario_main) & scenario == "S0W0",cols.to.replace] <- 
+  results.input[grepl("base", scenario_main) & scenario == "S0W0",.SD, .SDcols = !c("scenario_main", "scenario_econ_dispatch")]
 
 for (sc in 1:length(scenarios)){
   print(sc)
@@ -246,18 +258,23 @@ for (sc in 1:length(scenarios)){
   
 }
   
-
+write.csv(results.processed, file = "results_processed.csv")
 
 ##############################################################
 ## INDIVIDUAL PLOTS FOR INDIVIDUAL SCENARIOS #################
 ##############################################################
 
 ## USER INPUT: Scenarios for individual plots ################
-scenarios <- c("base", "coal_55mingen", "battery15", "battery30", "wind120HH_solar1A")
+scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", 
+               "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC")
+
 scenarios.sensitivity <- ""
+for (sc in 1:length(scenarios)){
+  scenarios.sensitivity[[sc]] <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
+}
 
 ## Theme ##
-theme_set(theme_cowplot(font_size=14))
+theme_set(theme_cowplot(font_size=18))
 colors_RD3 <- c("#fd8d3c", "#2b8cbe", "#969696")
 colors_RD5 <- c("#2b8cbe", "#fd8d3c", "#969696")
 colors_RD7 <- c("#5588bb", "#66bbbb", "#aa6644", "#99bb55","#ee9944", "#444466", "#bb5555")
@@ -270,11 +287,10 @@ positions2 <- c("0-100", "25-75", "50-50", "75-25", "100-0")
 positions3 <- c("S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
 #positions.tech <- c("Existing Other", "Existing Nuclear", "Existing Hydro RoR", "Existing Hydro Storage", "Existing Diesel", "Existing Gas CT", "Existing Gas CCGT", "Existing Coal", "Wind", "Solar PV", "New Gas CT", "New Gas CCGT", "New Coal")
 positions.tech <- c("New Coal", "New Gas CCGT", "New Gas CT", "Solar PV", "Wind", "Existing Coal", "Existing Gas CCGT", "Existing Gas CT", "Existing Diesel", "Existing Hydro Storage", "Existing Hydro RoR", "Existing Nuclear", "Existing Other")
+#Labels
+share.labels <- c("S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%", "S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%", "S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%")
+share.labels2 <- c("S 0 - W 0", "S 0 - W 200", "S 50 - W 150", "S 100 - W 100", "S 150 - W 50", "S 200 - W 0", "S 0 - W 300", "S 75 - W 225", "S 150 - W 150", "S 225 - W 75", "S 300 - W 0", "S 0 - W 400", "S 100 - W 300", "S 200 - W 200", "S 300 - W 100", "S 400 - W 0")
 
-
-for (sc in 1:length(scenarios)){
-  scenarios.sensitivity[[sc]] <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
-}
 
 for (sc in 1:length(scenarios)){
   print(sc)
@@ -292,10 +308,11 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Average Levelized Cost of VRE Generation \n USD/MWh", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="top", legend.title = element_blank(), legend.text = element_text(size = 18)) +
     scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh")) +
     background_grid()
-  
+
   ## VRE cost per MWh - Only after curtailment
   data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, cost_vre_pMWh)]
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
@@ -309,9 +326,30 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Average Levelized Cost of VRE Generation \n USD/MWh (after curtailment)", x = NULL) +
     scale_fill_manual(values = colors_RD5) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="top", legend.title = element_blank(), legend.text = element_text(size = 18)) +
     scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh")) +
     background_grid()
+  
+  ## VRE + Battery Storage cost per MWh of VRE - Only after curtailment ####
+  data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, cost_battery_pMWh, cost_vre_pMWh)]
+  data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
+  data.plot <- melt(data.plot, id.vars = c("scenario", "scenario_build"))
+  data.plot[variable=="cost_vre_pMWh", variable:= "Cost of RE"][variable=="cost_battery_pMWh", variable:= "Cost of Battery Storage"]
+  data.plot$variable <- reorder.factor(data.plot$variable, new.order = c("Cost of Battery Storage", "Cost of RE"))
+  
+  # data.plot_sorted <- as.data.table(data.plot %>% arrange(scenario)) # Use if sorting screws up
+  
+  p_vre_storage_curt[[sc]] <- ggplot(data.plot[order(data.plot$variable)], aes(scenario, value, fill = variable)) +
+    geom_bar(stat = "identity", width = width.bar) +
+    facet_wrap(~scenario_build, scales = "free_x") + 
+    labs(y = "Average Cost of VRE and Storage \n USD/MWh (VRE after curtailment)", x = NULL) +
+    scale_fill_manual(values = colors_RD3) + 
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="top", legend.title = element_blank(), legend.text = element_text(size = 18)) +
+    scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
+    background_grid()
+
   
   ## System cost for VRE implementation per MWh VRE absorbed
   data.plot <- results.processed[scenario!="S0W0" & scenario_main == scenarios[sc], .(scenario, scenario_build, rank, system_cost_vre_pMWh)]
@@ -323,7 +361,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Average Additional Cost of VRE Implementation \nUSD/MWh of VRE (after curtailment)", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position = "none") +
     scale_y_continuous(limits = c(-20, 80), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
     background_grid()
   
@@ -337,7 +376,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Average Additional Cost of VRE Implementation \nUSD/MWh of Load", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) + 
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position = "none") +
     scale_y_continuous(limits = c(-5, 15), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of Load")) +
     background_grid()
   
@@ -354,7 +394,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Average Value of VRE \nUSD/MWh of VRE (after curtailment)", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="top", legend.title = element_blank(), legend.text = element_text(size = 18)) +
     scale_y_continuous(limits = c(0, 100), sec.axis = sec_axis(~.*INR_USD/1000, name = "INR/kWh of VRE (after curtailment)")) +
     background_grid()
   
@@ -370,7 +411,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "VRE share of total electricity generation", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="top", legend.title = element_blank()) +
     scale_y_continuous(limits = c(0, 0.5), labels=percent) +
     background_grid()
   
@@ -381,7 +423,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Potential VRE share of total electricity generation", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=45, hjust=1, vjust=1), legend.position="none", legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="none", legend.title = element_blank()) +
     scale_y_continuous(limits = c(0, 0.5), labels=percent) +
     background_grid()
   
@@ -395,7 +438,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = "Annual VRE curtailment", x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position = "none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position = "none") +
     scale_y_continuous(limits = c(0, 0.6), labels=percent) +
     background_grid()
   
@@ -409,7 +453,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = expression(CO[2]~Emissions~Reduction~from~No~RE~Scenario), x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="none") +
     scale_y_continuous(limits = c(0, 0.5), labels=percent) +
     background_grid()
   
@@ -419,7 +464,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = expression(Total~CO[2]~Emissions~(million~tonnes)), x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="none") +
     background_grid()
   
   ## CO2 emissions cost of mitigation
@@ -443,7 +489,8 @@ for (sc in 1:length(scenarios)){
     facet_wrap(~scenario_build, scales = "free_x") + 
     labs(y = expression(Average~Cost~of~CO[2]~Emissions~Mitigation~(USD/tonne~CO[2])), x = NULL) +
     scale_fill_manual(values = colors_RD3) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="none") +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.position="none") +
     scale_y_continuous(limits = c(-20, 100)) +
     background_grid()
   
@@ -511,12 +558,13 @@ for (sc in 1:length(scenarios)){
     geom_bar(stat = "identity", width = width.bar) +
     labs(y = "Installed Capacity (MW)", x = NULL) +
     scale_fill_manual(values = colors.capacity.buildout) + 
-    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.title = element_blank()) +
+    scale_x_discrete(breaks=positions3, labels=share.labels2) +
+    theme(axis.text.x = element_text(angle=60, hjust=1, vjust=1), legend.title = element_blank()) +
     background_grid()
   
 }
 
-## Combo Plots #############
+## Individual Plots #############
 if(plot.individual.scenario == "yes"){
   for(sc in 1:length(scenarios)){
   
@@ -534,6 +582,9 @@ if(plot.individual.scenario == "yes"){
     
     ## Levelized cost of VRE after curtailment
     ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-", file_suffix, ".png"), p_vre_curt[[sc]])
+    
+    ## Levelized cost of VRE and storage per MWh VRE absorbed
+    ggsave(file = paste0(results.folder, "vre_curt-storage-levelized-cost-", file_suffix, ".png"), p_vre_storage_curt[[sc]])
     
     ## System cost of VRE per MWh VRE absorbed
     ggsave(file = paste0(results.folder, "vre_integration-cost-", file_suffix, ".png"), p_vre_sys[[sc]])
@@ -592,83 +643,82 @@ if(plot.individual.scenario == "yes"){
 
 
 
-
-
-if(length(scenarios) > 1){
-  file_suffix <- paste0(scenarios[1], "-", scenarios.dispatch[1], "_", scenarios[2], "-", scenarios.dispatch[2])
-  
-  ## Levelized cost of VRE after curtailment
-#   p.grid <- plot_grid(p_vre[[1]], p_vre[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-#   ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-high-low-cost-coal", ".png"), p.grid)
-  
-  plot.legend <- g_legend(p_vre[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_vre[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_vre[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-", file_suffix, ".png"), combo.plot)
-  
-  ## System cost of VRE per MWh VRE absorbed
-  p.grid <- plot_grid(p_vre_sys[[1]], p_vre_sys[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-  ggsave(file = paste0(results.folder, "vre_integration-cost-", file_suffix, ".png"), p.grid)
-  
-  ## System cost of VRE per MWh load served
-  p.grid <- plot_grid(p_vre_sys_pLoad[[1]], p_vre_sys_pLoad[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-  ggsave(file = paste0(results.folder, "vre_integration-cost-per-load-", file_suffix, ".png"), p.grid)
-  
-  ## Value of VRE
-#   p.grid <- plot_grid(p_value[[1]], p_value[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-#   ggsave(file = paste0(results.folder, "vre_value-high-low-cost-coal", ".png"), p.grid)
-
-  plot.legend <- g_legend(p_value[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_value[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_value[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "vre_value-", file_suffix, ".png"), combo.plot)
-  
-  ## VRE share not curtailed
-  ggsave(file = paste0(results.folder, "vre_share-uncurt-", file_suffix, ".png"), p_vre_share_uncurt[[1]])
-  
-  ## VRE share - both curtailed and not curtailed
-#   p.grid <- plot_grid(p_vre_share[[1]], p_vre_share[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'), ncol = 2)
-#   ggsave(file = paste0(results.folder, "vre_share-curt-uncurt-high-low-cost-coal", ".png"), p.grid)
-  
-  plot.legend <- g_legend(p_vre_share[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_vre_share[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_vre_share[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "vre_share-curt-uncurt-", file_suffix, ".png"), combo.plot)
-  
-  ## VRE curtailment
-  p.grid <- plot_grid(p_curt[[1]], p_curt[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-  ggsave(file = paste0(results.folder, "vre_curtailment-", file_suffix, ".png"), p.grid)
-  
-  ## Emissions 
-  plot.legend <- g_legend(p_mar_em[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_mar_em[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_mar_em[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "emissions-mar-", file_suffix, ".png"), combo.plot)
-  
-  plot.legend <- g_legend(p_avg_em[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_avg_em[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_avg_em[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "emissions-avg-", file_suffix, ".png"), combo.plot)
-  
-  ## Emissions average and marginal
-  plot.legend <- g_legend(p_em_combo[[1]])
-  combo.plot <- arrangeGrob(arrangeGrob(p_em_combo[[1]] + theme(legend.position="none") + ggtitle("A") ,
-                                        p_em_combo[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
-                            plot.legend, nrow=2,heights=c(10,1))
-  ggsave(file = paste0(results.folder, "emissions-avg-mar-", file_suffix, ".png"), combo.plot)
-  
-  ## Emissions reduction in %
-  p.grid <- plot_grid(p_em_red_perc[[1]], p_em_red_perc[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-  ggsave(file = paste0(results.folder, "emissions-reduction-perc-", file_suffix, ".png"), p.grid)
-  
-  ## Emissions Total
-  p.grid <- plot_grid(p_em_tot[[1]], p_em_tot[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
-  ggsave(file = paste0(results.folder, "emissions-total-", file_suffix, ".png"), p.grid)
-  
-}
-
+# 
+# if(length(scenarios) > 1){
+#   file_suffix <- paste0(scenarios[1], "-", scenarios.dispatch[1], "_", scenarios[2], "-", scenarios.dispatch[2])
+#   
+#   ## Levelized cost of VRE after curtailment
+# #   p.grid <- plot_grid(p_vre[[1]], p_vre[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+# #   ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-high-low-cost-coal", ".png"), p.grid)
+#   
+#   plot.legend <- g_legend(p_vre[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_vre[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_vre[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "vre_curt-levelized-cost-", file_suffix, ".png"), combo.plot)
+#   
+#   ## System cost of VRE per MWh VRE absorbed
+#   p.grid <- plot_grid(p_vre_sys[[1]], p_vre_sys[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+#   ggsave(file = paste0(results.folder, "vre_integration-cost-", file_suffix, ".png"), p.grid)
+#   
+#   ## System cost of VRE per MWh load served
+#   p.grid <- plot_grid(p_vre_sys_pLoad[[1]], p_vre_sys_pLoad[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+#   ggsave(file = paste0(results.folder, "vre_integration-cost-per-load-", file_suffix, ".png"), p.grid)
+#   
+#   ## Value of VRE
+# #   p.grid <- plot_grid(p_value[[1]], p_value[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+# #   ggsave(file = paste0(results.folder, "vre_value-high-low-cost-coal", ".png"), p.grid)
+# 
+#   plot.legend <- g_legend(p_value[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_value[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_value[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "vre_value-", file_suffix, ".png"), combo.plot)
+#   
+#   ## VRE share not curtailed
+#   ggsave(file = paste0(results.folder, "vre_share-uncurt-", file_suffix, ".png"), p_vre_share_uncurt[[1]])
+#   
+#   ## VRE share - both curtailed and not curtailed
+# #   p.grid <- plot_grid(p_vre_share[[1]], p_vre_share[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'), ncol = 2)
+# #   ggsave(file = paste0(results.folder, "vre_share-curt-uncurt-high-low-cost-coal", ".png"), p.grid)
+#   
+#   plot.legend <- g_legend(p_vre_share[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_vre_share[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_vre_share[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "vre_share-curt-uncurt-", file_suffix, ".png"), combo.plot)
+#   
+#   ## VRE curtailment
+#   p.grid <- plot_grid(p_curt[[1]], p_curt[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+#   ggsave(file = paste0(results.folder, "vre_curtailment-", file_suffix, ".png"), p.grid)
+#   
+#   ## Emissions 
+#   plot.legend <- g_legend(p_mar_em[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_mar_em[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_mar_em[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "emissions-mar-", file_suffix, ".png"), combo.plot)
+#   
+#   plot.legend <- g_legend(p_avg_em[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_avg_em[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_avg_em[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "emissions-avg-", file_suffix, ".png"), combo.plot)
+#   
+#   ## Emissions average and marginal
+#   plot.legend <- g_legend(p_em_combo[[1]])
+#   combo.plot <- arrangeGrob(arrangeGrob(p_em_combo[[1]] + theme(legend.position="none") + ggtitle("A") ,
+#                                         p_em_combo[[2]] + theme(legend.position="none", axis.title.y=element_blank()) + ggtitle("B"),nrow=1),
+#                             plot.legend, nrow=2,heights=c(10,1))
+#   ggsave(file = paste0(results.folder, "emissions-avg-mar-", file_suffix, ".png"), combo.plot)
+#   
+#   ## Emissions reduction in %
+#   p.grid <- plot_grid(p_em_red_perc[[1]], p_em_red_perc[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+#   ggsave(file = paste0(results.folder, "emissions-reduction-perc-", file_suffix, ".png"), p.grid)
+#   
+#   ## Emissions Total
+#   p.grid <- plot_grid(p_em_tot[[1]], p_em_tot[[2]] + theme(axis.title.y=element_blank()), labels = c('A', 'B'))
+#   ggsave(file = paste0(results.folder, "emissions-total-", file_suffix, ".png"), p.grid)
+#   
+# }
+# 
