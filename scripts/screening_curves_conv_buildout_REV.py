@@ -37,7 +37,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "wind120HH_solar1A"
+scenario_main = "high_cost_coal"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -82,7 +82,7 @@ load = pd.read_csv(inputPath + load_csv, sep=',')
 ## USER SPECIFIED PARAMETERS
 VoLL = 100000 # Value of lost load
 all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
-coal_low_cap_cost = 'yes' # Set all_new_coal to 'no' Select the appropriate crossover csv
+#coal_low_cap_cost = 'yes' # Set all_new_coal to 'no' Select the appropriate crossover csv
 outage_rate_coal = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_gas_ct = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
@@ -90,8 +90,6 @@ outage_rate_diesel = 0.2 # These outage rates need to match the ones from the co
 outage_rate_other = 0.3 # These outage rates need to match the ones from the conventional buildout algorithm
 derating_outages_conventional_gen = "yes"
 reserve_margin_over_peak = 0.15 # This is the reserve margin for "available" generation capacity above peak demand
-storBATTERY_efficiency = 0.8 ## For now, entire battery storage has same charging efficiency. That's the roundtrip eff applied to only charging.
-storBATTERY_initial_soc = 0.5 ## INitial state of charge of the battery storage
 
 ## Read the capacity factor cross-over points 
 cf_crossover = pd.read_csv(inputPath + "screening_curves\\" + "CF_crossover_points.csv", sep=',') 
