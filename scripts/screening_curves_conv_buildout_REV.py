@@ -29,8 +29,8 @@ print start_time
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-myPath = "G:\\Electricity_Models\\" 
-#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+#myPath = "G:\\Electricity_Models\\" 
+myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
@@ -65,7 +65,7 @@ yearBase = inputScenario.loc['load_year'][scenario_main]
 load_modified = inputScenario.loc['load_modified_suffix'][scenario_main]
 load_csv = "load" + str(yearAnalysis) + load_modified + "_19EPS" + ".csv" # Load CSV
 genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
-genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants
+genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants, change the file name for high cost coal until you make a generic script
 genNEWGASCT_csv = "gen_new_gas_ct_input.csv" # List of new CT gas plants
 genNEWGASCCGT_csv = "gen_new_gas_ccgt_input.csv" # List of new CCGT gas plants
 

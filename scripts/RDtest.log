@@ -1,0 +1,106 @@
+
+Log started (V12.6.3.0) Tue Sep 04 09:46:42 2018
+
+
+Problem 'c:\users\akjohn~1\appdata\local\temp\tmpnzmju5.pyomo.lp' read.
+Read time = 0.08 sec. (6.63 ticks)
+
+Problem name         : c:\users\akjohn~1\appdata\local\temp\tmpnzmju5.pyomo.lp
+Objective sense      : Minimize
+Variables            :   36893  [Nneg: 35378,  Binary: 1515]
+Objective nonzeros   :   35184
+Linear constraints   :   65476  [Less: 65328,  Greater: 24,  Equal: 124]
+  Nonzeros           :  166035
+  RHS nonzeros       :     146
+
+Variables            : Min LB: 0.0000000        Max UB: 1.000000       
+Objective nonzeros   : Min   : 590.0000         Max   : 100000.0       
+Linear constraints   :
+  Nonzeros           : Min   : 0.8500000        Max   : 23673.45       
+  RHS nonzeros       : Min   : 1.000000         Max   : 295340.0       
+Tried aggregator 1 time.
+MIP Presolve eliminated 5643 rows and 3535 columns.
+Reduced MIP has 59833 rows, 33358 columns, and 151752 nonzeros.
+Reduced MIP has 1246 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.11 sec. (96.00 ticks)
+Found incumbent of value 6.1985156e+011 after 0.16 sec. (134.98 ticks)
+Probing time = 0.16 sec. (15.03 ticks)
+Tried aggregator 1 time.
+Reduced MIP has 59833 rows, 33358 columns, and 151752 nonzeros.
+Reduced MIP has 1246 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.11 sec. (81.83 ticks)
+Probing time = 0.05 sec. (14.88 ticks)
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 8 threads.
+Root relaxation solution time = 0.69 sec. (517.44 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                      6.19852e+011  2.11637e+008            99.97%
+*     0+    0                      1.62741e+010  2.11637e+008            98.70%
+      0     0  1.53237e+010     1  1.62741e+010  1.53237e+010     4645    5.84%
+      0     0  1.53237e+010     1  1.62741e+010   MIRcuts: 25     5046    5.84%
+      0     0  1.53237e+010     1  1.62741e+010   MIRcuts: 12     5064    5.84%
+*     0+    0                      1.53253e+010  1.53237e+010             0.01%
+      0     2  1.53237e+010     1  1.53253e+010  1.53237e+010     5064    0.01%
+Elapsed time = 3.49 sec. (3977.28 ticks, tree = 0.01 MB, solutions = 3)
+      7     9  1.53237e+010     1  1.53253e+010  1.53237e+010     5332    0.01%
+      9    11  1.53237e+010     1  1.53253e+010  1.53237e+010     5351    0.01%
+     10    12  1.53237e+010     1  1.53253e+010  1.53237e+010     5398    0.01%
+     11    13  1.53237e+010     1  1.53253e+010  1.53237e+010     5504    0.01%
+     12    14  1.53238e+010     2  1.53253e+010  1.53237e+010     5712    0.01%
+     13    15  1.53237e+010     1  1.53253e+010  1.53237e+010     5825    0.01%
+     14    16  1.53238e+010     2  1.53253e+010  1.53237e+010     6058    0.01%
+     15    17  1.53237e+010     2  1.53253e+010  1.53237e+010     6201    0.01%
+     16    18  1.53238e+010     2  1.53253e+010  1.53237e+010     6373    0.01%
+     53    55  1.53238e+010     2  1.53253e+010  1.53237e+010     8561    0.01%
+Elapsed time = 4.93 sec. (4933.98 ticks, tree = 2.90 MB, solutions = 3)
+    137   139  1.53239e+010     2  1.53253e+010  1.53237e+010    17071    0.01%
+    144   146  1.53239e+010     2  1.53253e+010  1.53237e+010    18514    0.01%
+    146   148  1.53239e+010     2  1.53253e+010  1.53237e+010    19514    0.01%
+    148   150  1.53239e+010     1  1.53253e+010  1.53237e+010    19561    0.01%
+    151   153  1.53240e+010     1  1.53253e+010  1.53237e+010    20356    0.01%
+    152   154  1.53240e+010     1  1.53253e+010  1.53237e+010    20749    0.01%
+    153   155  1.53239e+010     1  1.53253e+010  1.53237e+010    20772    0.01%
+    154   156  1.53238e+010     2  1.53253e+010  1.53237e+010    20794    0.01%
+    155   157  1.53239e+010     1  1.53253e+010  1.53237e+010    20838    0.01%
+    156   158  1.53239e+010     2  1.53253e+010  1.53237e+010    20859    0.01%
+Elapsed time = 139.53 sec. (6084.97 ticks, tree = 12.31 MB, solutions = 3)
+    216   218  1.53241e+010     1  1.53253e+010  1.53237e+010    31690    0.01%
+    218   220  1.53240e+010     1  1.53253e+010  1.53237e+010    32228    0.01%
+    219   221  1.53240e+010     2  1.53253e+010  1.53237e+010    32827    0.01%
+    220   222  1.53240e+010     1  1.53253e+010  1.53237e+010    32874    0.01%
+    221   223  1.53239e+010     2  1.53253e+010  1.53237e+010    33479    0.01%
+*   222+  215                      1.53240e+010  1.53237e+010             0.00%
+    223   217  1.53239e+010     1  1.53240e+010  1.53237e+010    33516    0.00%
+*   224+  204                      1.53239e+010  1.53237e+010             0.00%
+    224   205  1.53241e+010     1  1.53239e+010  1.53237e+010    34150    0.00%
+*   225+  190                      1.53239e+010  1.53237e+010             0.00%
+    226   192  1.53239e+010     1  1.53239e+010  1.53237e+010    34163    0.00%
+    227   193  1.53240e+010     1  1.53239e+010  1.53237e+010    34201    0.00%
+    229   195  1.53239e+010     1  1.53239e+010  1.53237e+010    34203    0.00%
+Elapsed time = 142.30 sec. (7145.64 ticks, tree = 18.16 MB, solutions = 3)
+
+Mixed integer rounding cuts applied:  37
+Gomory fractional cuts applied:  1
+
+Root node processing (before b&c):
+  Real time             =    3.42 sec. (3945.26 ticks)
+Parallel b&c, 8 threads:
+  Real time             =  138.97 sec. (3821.95 ticks)
+  Sync time (average)   =   18.86 sec.
+  Wait time (average)   =  118.46 sec.
+                          ------------
+Total (root+branch&cut) =  142.38 sec. (7767.21 ticks)
+
+Solution pool: 7 solutions saved.
+
+MIP - Integer optimal, tolerance (0.0001/1e-006):  Objective = 1.5323873754e+010
+Current MIP best bound = 1.5323709981e+010 (gap = 163773, 0.00%)
+Solution time =  142.38 sec.  Iterations = 38206  Nodes = 253 (92)
+Deterministic time = 7767.31 ticks  (54.55 ticks/sec)
+
+
+Incumbent solution written to file 'c:\users\akjohn~1\appdata\local\temp\tmpspkey3.cplex.sol'.

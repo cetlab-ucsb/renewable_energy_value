@@ -22,7 +22,8 @@ from pyomo.opt import SolverFactory
 start_time = time.time()
 print start_time
 opt = SolverFactory("cplex")
-# opt.options["mipgap"] = 4
+#opt.options["timelimit"] = 120 # in seconds
+opt.options["mipgap"] = 0.001 # 0.001 is 0.1%
 
 
 '''
@@ -38,7 +39,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "wind120HH_solar1A"
+scenario_main = "high_cost_coal"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -595,7 +596,8 @@ for sc in range(len(scenarios)):
         print("Compiling...")
         model_instance = model.create_instance()
         print("Solving...")
-        results = opt.solve(model_instance, tee=True)
+        results = opt.solve(model_instance, tee=True, logfile = "econ_disp.log")
+        #results = opt.solve(model_instance, tee=True, timelimit = 120)
         
         # print("Instance pprint...")
         # model_instance.pprint()
