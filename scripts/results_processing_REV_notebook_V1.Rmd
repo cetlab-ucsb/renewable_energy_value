@@ -59,7 +59,7 @@ getwd()
 ## Set working directory ##
 switch(Sys.info()[['sysname']],
        Windows= {"G:/Electricity_Models/renewable_energy_value/"},
-       Linux  = {print("I'm a penguin.")},
+       Linux  = {print("Linux!!!.")},
        Darwin = {working.directory <- '/Volumes/RDExt1/Electricity_Models/renewable_energy_value/'})
 
 #setwd(working.directory)
@@ -80,12 +80,14 @@ emissions.fname <- "emissions.csv"
 gen.cost.fname <- "generator_cost_all.csv"
 existing.gen.capacity.fname <- "existing_generation.csv"
 scenario.inputs.fname <- "REvalue_input_csv.csv"
+#scenario.inputs.fname <- "Scenarios_Cost_Master_v4.xlsx"
+
 ```
 
 Specify scenarios to process
 
 ```{r, scenarios, echo=FALSE}
-scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC") 
+scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC") 
 ```
 
 User parameter inputs
@@ -118,6 +120,7 @@ emissions <- fread(paste0(input.folder, emissions.fname))
 gen.cost <- fread(paste0(input.folder, gen.cost.fname))
 existing.gen.capacity <- fread(paste0(input.folder, existing.gen.capacity.fname))
 scenario.inputs <- fread(paste0(input.folder, scenario.inputs.fname))
+#scenario.inputs <- read.xlsx(paste0(input.folder, scenario.inputs.fname), sheetName = "REvalue_input_csv") # Eventually read worksheets directly from xslx
 ```
 
 
@@ -367,8 +370,7 @@ write.csv(results.processed, file = paste0(output.folder, "results_processed.csv
 Scenarios for individual plots
 
 ```{r, scenarios for individual plots, echo=FALSE}
-scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", 
-               "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC")
+scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC")
 
 ```
 
@@ -752,6 +754,8 @@ if(plot.individual.scenario == "yes"){
 ```
 
 
+Plot functions
+1) Line plots with facets
 
 ```{r, plot functions, echo=FALSE}
 
@@ -785,9 +789,9 @@ plot.facet.allLines <- function(results.input, main_variable, scenarios.to.inclu
 ### Wind, solar and coal cost inividual plots
 ```{r, vre coal plots, echo=FALSE, message = FALSE}
 
-scenarios.to.include.vre <- c("base", "wind30LC", "solar30LC", "wind30LC_solar30LC", "high_cost_coal")
+scenarios.to.include.vre <- c("base", "wind30LC", "solar30LC", "wind30LC_solar30LC", "wind30LC_solar30LC_coalHC")
 scenarios.labels.vre <- c("base case", "low cost wind", "low cost solar", "low cost wind + solar", "low cost wind + solar + high cost coal")
-linetype_vre <- c("solid", rep("dashed", 3))
+linetype_vre <- c("solid", rep("dashed", 3), "solid")
 
 
 ## Share of VRE
@@ -804,7 +808,7 @@ p_vre_share_w_noCurt
 
 ## Cost of VRE
 p_vre <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.vre, scenarios.labels.vre, positions, colors_RD7, linetype_vre, "Average Cost of VRE", 0, 100, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
-p_vre + scale_linetype_manual(labels = scenarios.labels.vre, values = c("solid", rep("dashed", 3)))
+p_vre + scale_linetype_manual(labels = scenarios.labels.vre, values = c("solid", rep("dashed", 3), "solid"))
 
 ## Capacity value of VRE
 p_capacity_value <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.vre, scenarios.labels.vre, positions, colors_RD7, linetype_vre, "Average Capacity Value of VRE", 0, 100, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
@@ -815,7 +819,7 @@ p_energy_value <- plot.facet.allLines(results.processed, "energy_value_pMWh", sc
 p_energy_value
 
 ## System additional cost of VRE
-p_sys_cost <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.vre, scenarios.labels.vre, positions, colors_RD7, linetype_vre, "Average Additional Cost of VRE", -5, 15, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
+p_sys_cost <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.vre, scenarios.labels.vre, positions, colors_RD7, linetype_vre, "Average Additional Cost of VRE", -10, 10, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
 p_sys_cost
 
 ## Cost of CO2 emissions mitigation
@@ -824,11 +828,12 @@ p_cost_emissions_avg
 
 ```
 
-### Wind solar and coal Plots in a Panel
+### Wind solar and coal Plots in a Panel 
 
 ```{r, vre panel, echo=FALSE, message = FALSE}
 
 ## Using the gtable way of plotting panel data. This aligns the plots to the x and y axis when the axis labels and text vary in width or height. 
+## Uses outputs from previous chunk
 
 g_vre_share_w_noCurt <- ggplotGrob(p_vre_share_w_noCurt + theme(legend.position = "none", axis.text.x = element_blank()))
 
