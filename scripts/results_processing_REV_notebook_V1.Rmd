@@ -1025,3 +1025,67 @@ p_buildout <- ggplot(capacity.all, aes(scenario, capacity_GW, fill = technology,
 p_buildout
 
 ```
+
+### Modified load curves
+
+```{r, modified load curves, echo=FALSE}
+# Read data from modified load forecasts
+load_india_2030_forecasts <- fread(paste0(input.folder, "load_forecasts/load2030_19EPS_mod_all.csv"))
+
+# Plot functions from the load modification script. 
+#By month and hour (Mean)
+plot_comparison_byMonth_byHour_line <- function(input_data, input_columns, scenarios.labels, yAxisLabel, plot.colors, plot.linetypes){
+  data_summary_byMonth_byHour <- input_data[,lapply(.SD, mean), by = .(month(dateTime), hour(dateTime)), .SDcols = input_columns]
+  data_summary_byMonth_byHour_toPlot <- melt(data_summary_byMonth_byHour, id.vars=c("month", "hour"), measure.vars=input_columns, variable.name="type", value.name="value")
+  ggplot(data_summary_byMonth_byHour_toPlot, aes(x = hour, y = value/10^3, color = type, linetype = type)) + 
+    geom_line(stat="identity") + 
+    expand_limits(y = 0) +
+    facet_wrap(~month, ncol=4) +
+    labs(y = yAxisLabel, x = "Hour") +
+    theme(legend.position="bottom", legend.title = element_blank()) +
+    scale_color_manual(labels = scenarios.labels, values = plot.colors) +
+    scale_linetype_manual(labels = scenarios.labels, values = plot.linetypes) +
+    background_grid()
+}
+
+# Cumulative load distribution curves
+#By month and hour (Mean)
+plot_cum_load_distribution_curves <- function(input_data, input_columns, scenarios.labels, yAxisLabel, plot.colors, plot.linetypes){
+  input_data_sorted <- input_data[, .SD, .SDcols = c("Timepoint")]
+  for(input_column in input_columns){
+    input_column_sorted <- as.data.table(input_data[, .SD, .SDcols = c(eval(input_column))])[order(-get(input_column))]
+    input_data_sorted[, eval(input_column) := input_column_sorted] # sorted load from each column
+  }
+  data_to_plot <- melt(input_data_sorted, id.vars=c("Timepoint"), measure.vars=input_columns, variable.name="type", value.name="value")
+  ggplot(data_to_plot, aes(x = Timepoint, y = value/10^3, color = type, linetype = type)) + 
+    geom_line(stat="identity") + 
+    expand_limits(y = 0) +
+    labs(y = yAxisLabel, x = "Hour") +
+    theme(legend.position="bottom", legend.title = element_blank()) +
+    scale_color_manual(labels = scenarios.labels, values = plot.colors) +
+    scale_linetype_manual(labels = scenarios.labels, values = plot.linetypes) +
+    background_grid()
+}
+
+
+#### GENERATE PLOTS
+## Colors
+colors_RD4 <- c("#fd8d3c", "black", "#2b8cbe", "#969696")
+#colors_RD5 <- c("#2b8cbe", "#fd8d3c", "#969696")
+colors_RD7 <- c("#5588bb", "#66bbbb", "#aa6644", "#99bb55","#ee9944", "#444466", "#bb5555")
+linetype_RD <- c("solid", rep("dashed", 6))
+linetype_RD_dotted <- c("solid", rep("dotted", 6))
+
+#### Load forecast comparison plots
+columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D0.25_M0.25_energyPeak", "load_mod_D0.25_M0.25_energyOnly", "load_mod_D0.5_M0_energyPeak", "load_mod_D0.5_M0_energyOnly")
+labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast", "CEA energy only forecast", "Modified 25% Delhi 25% Mumbai peak+energy", "Modified 25% Delhi 25% Mumbai energy only", "Modified 50% Delhi load peak+energy", "Modified 50% Delhi load energy only")
+
+# Month-Hour 12-24 plots of load
+plot_comparison_byMonth_byHour_line(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly average load (GW)", colors_RD7, linetype_RD)
+
+# Cumulative load distribution curves
+plot_cum_load_distribution_curves(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly load (GW)", colors_RD7, linetype_RD_dotted)
+
+
+
+```
