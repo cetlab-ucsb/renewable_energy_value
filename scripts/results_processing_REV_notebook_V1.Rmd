@@ -797,7 +797,7 @@ plot.allLines.byVREsplit <- function(results.input, main_variable, scenarios.to.
   scale_linetype_manual(labels = share.labels, values = plot.linetype) +
   #scale_x_discrete(breaks=positions, labels=share.labels) +
     ggtitle(plot_title) +
-  theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="bottom", legend.title = element_blank(), legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), plot.title = element_text(face="plain")) +
+  theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=1), legend.position="bottom", legend.title = element_blank(), legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), plot.title = element_text(face="plain")) +
   scale_y_continuous(limits = c(y_min, y_max), sec.axis = sec_axis(~.*y_sec_multiplier, name = y_label_sec)) +
   background_grid()
   
@@ -991,7 +991,7 @@ grid.draw(grob_storage.plot)
 
 ### Changing VRE value with higher hub heights and solar PV tracking
 
-```{r, VRE value new technology, echo=FALSE}
+```{r, VRE value new technology, echo=FALSE, fig.height=4, fig.width=7}
 ## 
 scenarios.to.include.vre <- c("base", "wind120HH_solar1A")
 scenarios.labels.vre <- c("80m hub height wind and fixed tilt solar PV", "120m hub height wind and 1A tracking solar PV ")
@@ -1133,7 +1133,7 @@ linetype_RD <- c("solid", rep("dashed", 6))
 linetype_RD_dotted <- c("solid", rep("dotted", 6))
 
 #### Load forecast comparison plots
-columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D0.25_M0.25_energyPeak", "load_mod_D0.25_M0.25_energyOnly", "load_mod_D0.5_M0_energyPeak", "load_mod_D0.5_M0_energyOnly")
+columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D25_M25_energyPeak", "load_mod_D25_M25_energyOnly", "load_mod_D50_M0_energyPeak", "load_mod_D50_M0_energyOnly")
 labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast", "CEA energy only forecast", "Modified 25% Delhi 25% Mumbai peak+energy", "Modified 25% Delhi 25% Mumbai energy only", "Modified 50% Delhi load peak+energy", "Modified 50% Delhi load energy only")
 
 # Month-Hour 12-24 plots of load

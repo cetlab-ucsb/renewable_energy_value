@@ -10,7 +10,7 @@ library(ggplot2)
 library(grid)
 library(reshape2)
 library(xlsx)
-
+library(cowplot)
 
 ## INPUTS TO SCRIPT ##############################################################################################
 
@@ -219,7 +219,7 @@ for(forecast_method in forecast_methods ){
     print(forecast_method)
     input_column_name <- paste0("load_mod_", i)
     print(input_column_name)
-    output_column_suffix <- paste0("D", weight_delhi[i], "_M", weight_mumbai[i], "_", forecast_method)
+    output_column_suffix <- paste0("D", weight_delhi[i]*100, "_M", weight_mumbai[i]*100, "_", forecast_method)
     load_base <- load_india_mod[, .SD, .SDcols = c("dateTime", eval(input_column_name))]
     load_india_forecast <- load_forecast_function(load_base, forecast_method, input_column_name, "india", energy_peakLoad_forecast)
     load_india_forecasts_all[, paste0("load_mod_", eval(output_column_suffix)) := load_india_forecast[, get(input_column_name)]]
@@ -307,7 +307,7 @@ linetype_RD <- c("solid", rep("dashed", 6))
 linetype_RD_dotted <- c("solid", rep("dotted", 6))
 
 #### Load forecast comparison plots
-columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D0.25_M0.25_energyPeak", "load_mod_D0.25_M0.25_energyOnly", "load_mod_D0.5_M0_energyPeak", "load_mod_D0.5_M0_energyOnly")
+columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D25_M25_energyPeak", "load_mod_D25_M25_energyOnly", "load_mod_D50_M0_energyPeak", "load_mod_D50_M0_energyOnly")
 labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast", "CEA energy only forecast", "Modified 25% Delhi 25% Mumbai peak+energy", "Modified 25% Delhi 25% Mumbai energy only", "Modified 50% Delhi load peak+energy", "Modified 50% Delhi load energy only")
 
 # Month-Hour 12-24 plots of load
