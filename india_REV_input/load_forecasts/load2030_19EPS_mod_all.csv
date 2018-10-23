@@ -1,4 +1,4 @@
-"","Timepoint","load","dateTime","Day","load_mod_D0_M0_energyPeak","load_mod_D0.25_M0.25_energyPeak","load_mod_D0.5_M0_energyPeak","load_mod_D0_M0_energyOnly","load_mod_D0.25_M0.25_energyOnly","load_mod_D0.5_M0_energyOnly"
+"","Timepoint","load","dateTime","Day","load_mod_D0_M0_energyPeak","load_mod_D25_M25_energyPeak","load_mod_D50_M0_energyPeak","load_mod_D0_M0_energyOnly","load_mod_D25_M25_energyOnly","load_mod_D50_M0_energyOnly"
 "1",1,234669,2030-01-01 00:55:00,1,233966,236638,257221,235127,218368,201660
 "2",2,230127,2030-01-01 01:55:00,1,228388,228854,249658,229550,209122,187385
 "3",3,230589,2030-01-01 02:55:00,1,228920,226137,246765,230082,206049,182201
