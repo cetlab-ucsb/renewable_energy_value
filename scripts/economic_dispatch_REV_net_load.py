@@ -38,7 +38,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "load_modD0M0_energyOnly"
+scenario_main = "load_modD50M0_energyOnly"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -86,7 +86,7 @@ storBATTERY_csv = "battery_storage.csv"
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W600", "S150W450","S300W300", "S450W150", "S600W0"] #["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
+scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450","S300W300", "S450W150", "S600W0"]
 
 ## Load
 load = pd.read_csv(inputPathLoadForecasts + load_csv, sep=',')
