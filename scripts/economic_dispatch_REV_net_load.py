@@ -30,15 +30,15 @@ opt = SolverFactory("cplex")
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-myPath = "G:\\Electricity_Models\\" 
-#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+#myPath = "G:\\Electricity_Models\\" 
+myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "wind120HH_solar1A"
+scenario_main = "base"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -61,6 +61,7 @@ scenario_suffix_operation = ""    ## User defined
 inputPathVRE_gen_profiles = myPath + "renewable_energy_value\\india_REV_input\\REvalue_gen_profiles\\" + REvalue_folder_suffix + "\\"
 inputPathVRE_capacity = myPath + "renewable_energy_value\\india_REV_input\\REvalue_capacity\\" + REvalue_folder_suffix + "\\"
 inputPathNEWCONV_capacity = myPath + "renewable_energy_value\\india_REV_input\\new_conventional_capacity\\"  + new_conventional_capacity_folder_suffix + "\\"
+inputPathLoadForecasts = inputPath + "load_forecasts\\"
 outputPath = myPath + "renewable_energy_value\\india_REV_output\\"
 outputPathDispatch = outputPath + "\\net_load\\" + net_load_folder_suffix + "\\"
 #outputPathHydroDispatch = outputPath + scenario_suffix + "\\hydro_dispatch\\" 
@@ -70,8 +71,8 @@ outputPathNetLoad = inputPath + "net_load\\" + net_load_folder_suffix + "\\"
 results_all_scenarios_csv = "results_all_scenarios_net_load.csv"
 
 yearBase = inputScenario.loc['load_year'][scenario_main]
-load_modified = inputScenario.loc['load_modified_suffix'][scenario_main]
-load_csv = "load" + str(yearAnalysis) + load_modified + "_19EPS" + ".csv" # Load CSV
+load_modifier = inputScenario.loc['load_modified_suffix'][scenario_main][1:]
+load_csv = "load" + str(yearAnalysis) + "_19EPS" + load_modifier + ".csv" # Load CSV
 genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
 #genVRE_csv = "vre_gen.csv" # variable RE generator csv with dispatch capacity factors
 genHYDRO_minGen_csv = "hydro_min_gen.csv"
@@ -85,10 +86,10 @@ storBATTERY_csv = "battery_storage.csv"
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
+scenarios = ["S0W600", "S150W450","S300W300", "S450W150", "S600W0"] #["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]
 
 ## Load
-load = pd.read_csv(inputPath + load_csv, sep=',')
+load = pd.read_csv(inputPathLoadForecasts + load_csv, sep=',')
 # Load dataframe to add to result at the end
 load_all = load[['Timepoint', 'load']]
 load_all.set_index('Timepoint', inplace=True)
