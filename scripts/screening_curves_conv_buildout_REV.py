@@ -196,27 +196,32 @@ for sc in range(len(scenarios)):
     total_available_capacity_base = total_available_capacity_base + reserve_margin_over_peak * load_peak * total_available_capacity_base/net_load_peak
     
     # Required new capacity
-    excess_capacity = 0 # Keep track of existing capacity that is in excess of the required total capacity in each category
+    excess_capacity_peaker = 0 # Keep track of existing capacity that is in excess of the required total capacity in each category
+    excess_capacity_mid = 0
+    excess_capacity_base = 0
     # New peak capacity
+    # Add new capacity only when required capacity is greater than existing capacity. Otherwise, keep track of excess capacity
     existing_available_capacity_peaker = genGASCT_genCapacity['gen_capacity'].sum() * (1-outage_rate_gas_ct) + genDIESEL_genCapacity['gen_capacity'].sum() * (1-outage_rate_diesel)
     if total_available_capacity_peaker > existing_available_capacity_peaker:
         new_capacity_ct = total_available_capacity_peaker - existing_available_capacity_peaker
     else:
         new_capacity_ct = 0
-        excess_capacity = existing_available_capacity_peaker - total_available_capacity_peaker
+        excess_capacity_peaker = existing_available_capacity_peaker - total_available_capacity_peaker
     # New mid capacity
+    # Add new capacity only when required capacity is greater than the sum of existing CCGT capacity and excess peaker capacity. Otherwise, 
     existing_available_capacity_mid = genGASCCGT_genCapacity['gen_capacity'].sum() * (1-outage_rate_gas_ccgt)
-    if total_available_capacity_mid > existing_available_capacity_mid:
-        new_capacity_ccgt = total_available_capacity_mid - existing_available_capacity_mid 
+    if total_available_capacity_mid > (existing_available_capacity_mid + excess_capacity_peaker):
+        new_capacity_ccgt = total_available_capacity_mid - existing_available_capacity_mid - excess_capacity_peaker
     else:
         new_capacity_ccgt = 0
-        excess_capacity = existing_available_capacity_mid - total_available_capacity_mid
+        excess_capacity_mid = existing_available_capacity_mid - total_available_capacity_mid + excess_capacity_peaker # Add excess capacity for peaker as well
     # New base capacity
     existing_available_capacity_base = genCOAL_genCapacity['gen_capacity'].sum() * (1-outage_rate_coal) + genOTHER_genCapacity['gen_capacity'].sum() * (1-outage_rate_other)
-    if total_available_capacity_base > (existing_available_capacity_base + excess_capacity):
-        new_capacity_coal = total_available_capacity_base - existing_available_capacity_base - excess_capacity
+    if total_available_capacity_base > (existing_available_capacity_base + excess_capacity_mid):
+        new_capacity_coal = total_available_capacity_base - existing_available_capacity_base - excess_capacity_mid 
     else:
         new_capacity_coal = 0
+        excess_capacity_base = existing_available_capacity_base - total_available_capacity_base + excess_capacity_mid # Add excess capacity for mid as well (which includes peak excess). This parameter is not recorded.
     
     # To restrict new conventional buildout to only coal    (Need to change this code. What if outages are different for the generation technologies?)
     if all_new_coal == 'yes':
