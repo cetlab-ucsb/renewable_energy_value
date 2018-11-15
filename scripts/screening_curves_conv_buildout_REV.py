@@ -29,18 +29,16 @@ print start_time
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-#myPath = "G:\\Electricity_Models\\" 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+myPath = "E:\\Electricity_Models\\" 
+#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "high_cost_coal"
+scenario_main = "load_modD25M25_energyOnly"
 yearAnalysis = 2030
-start_day = 1
-end_day = 365
 
 ### INPUT SCENARIO CSV
 inputScenario = pd.read_csv(inputPath + "REvalue_input_csv.csv", sep=',')
@@ -59,11 +57,12 @@ scenario_suffix_operation = ""    ## User defined. e.g. "all_new_coal"
 
 ### PATHS
 inputPathNetLoad = inputPath + "net_load\\" + net_load_folder_suffix + "\\" 
+inputPathLoadForecasts = inputPath + "load_forecasts\\"
 
 ### CSVs
 yearBase = inputScenario.loc['load_year'][scenario_main]
-load_modified = inputScenario.loc['load_modified_suffix'][scenario_main]
-load_csv = "load" + str(yearAnalysis) + load_modified + "_19EPS" + ".csv" # Load CSV
+load_modifier = inputScenario.loc['load_modified_suffix'][scenario_main][1:]
+load_csv = "load" + str(yearAnalysis) + "_19EPS" + load_modifier + ".csv" # Load CSV
 genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
 genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants, change the file name for high cost coal until you make a generic script
 genNEWGASCT_csv = "gen_new_gas_ct_input.csv" # List of new CT gas plants
@@ -74,10 +73,10 @@ genNEWGASCCGT_csv = "gen_new_gas_ccgt_input.csv" # List of new CCGT gas plants
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"]#, ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0"] # List of VRE scenarios
+scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450","S300W300", "S450W150", "S600W0"] # List of VRE scenarios
 
 ## Load
-load = pd.read_csv(inputPath + load_csv, sep=',')
+load = pd.read_csv(inputPathLoadForecasts + load_csv, sep=',')
 
 ## USER SPECIFIED PARAMETERS
 VoLL = 100000 # Value of lost load
