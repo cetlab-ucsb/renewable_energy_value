@@ -1,7 +1,6 @@
 .Rproj.user
 .Rhistory
 .RData
-*/*.html
 *.xml
 *temp*
 !*template*
@@ -13,7 +12,5 @@
 RD_*
 ~$*
 **/*_cache
-**/*.png
-**/*.html
 ._~$*
 ._*
