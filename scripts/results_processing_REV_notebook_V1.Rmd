@@ -3,6 +3,7 @@ title: "Cost and Value Results"
 output:
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 <!--
@@ -61,11 +62,12 @@ getwd()
 switch(Sys.info()[['sysname']],
        Windows= {"G:/Electricity_Models/renewable_energy_value/"},
        Linux  = {print("Linux!!!.")},
-       Darwin = {working.directory <- '/Volumes/RDExt1/Electricity_Models/renewable_energy_value/'})
+       #Darwin = {working.directory <- '/Volumes/RDExt1/Electricity_Models/renewable_energy_value/'})
+       Darwin = {working.directory <- '/Users/ranjitster/Dropbox/renewable_energy_value/renewable_energy_value/'})
 
 #setwd(working.directory)
 
-knitr::opts_knit$set(root.dir = working.directory) # This code does not work!!! The rot directory is still the one where the script is located. In a way, that is ok, because now the path to the inputs would be relative. 
+knitr::opts_knit$set(root.dir = working.directory) # This code does not work!!! The root directory is still the one where the script is located. In a way, that is ok, because now the path to the inputs would be relative. 
 getwd()
 knitr::opts_chunk$set(echo=FALSE, comment=NA, warning=FALSE, message=FALSE, include=TRUE)
 ```
@@ -73,8 +75,9 @@ knitr::opts_chunk$set(echo=FALSE, comment=NA, warning=FALSE, message=FALSE, incl
 Input files
 
 ```{r, input file names, echo=FALSE}
-input.folder <- "../india_REV_input/" # Remove the "../" if you want to knit the document. Issues with specifying working directory
-output.folder <- "../india_REV_output/"
+input.folder <- "india_REV_input/" # Remove the "../" if you want to knit the document. Issues with specifying working directory
+output.folder <- "india_REV_output/"
+output.folder.processed.results <- "processed_results/"
 #results.folder <- "processed_results_coalHC_coalLC_SolarLC20p/"
 input.results.fname <- "results_all_scenarios.csv"
 emissions.fname <- "emissions.csv"
@@ -368,7 +371,7 @@ print(head(results.processed))
 write results csv
 
 ```{r, echo=FALSE, eval=FALSE}
-write.csv(results.processed, file = paste0(output.folder, "results_processed.csv"))
+write.csv(results.processed, file = paste0(output.folder.processed.results, "results_processed_summary.csv"))
 ```
 
 Scenarios for individual plots
@@ -718,7 +721,7 @@ if(plot.individual.scenario == "yes"){
     # Get the scenario suffix corresponding to the scenario name
     sc.sensitivity <- scenario.inputs[parameter == "scenario_suffix", get(scenarios[sc])]
     
-    results.folder <- paste0("results/processed_results_", scenarios[sc], "-", scenarios.sensitivity[sc], "/")
+    results.folder <- paste0("processed_results/processed_results_", scenarios[sc], "-", scenarios.sensitivity[sc], "/")
     ifelse(!dir.exists(file.path(results.folder)), dir.create(file.path(results.folder), recursive=TRUE), FALSE)
     
     
@@ -1307,7 +1310,7 @@ p_buildout
 
 ```{r, modified load curves, echo=FALSE}
 # Read data from modified load forecasts
-load_india_2030_forecasts <- fread(paste0(input.folder, "load_forecasts/load2030_19EPS_mod_all.csv"))
+load_india_2030_forecasts <- fread(paste0(input.folder, "load_forecasts/load2030_19EPSmod_all.csv"))
 
 # Plot functions from the load modification script. 
 #By month and hour (Mean)
