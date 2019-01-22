@@ -13,62 +13,62 @@ information on commands.
 CPLEX> Logfile 'cplex.log' closed.
 Logfile 'econ_disp.log' open.
 CPLEX> New value for mixed integer optimality gap tolerance: 0.001
-CPLEX> Problem 'c:\users\akjohn~1\appdata\local\temp\tmphrtluw.pyomo.lp' read.
-Read time = 0.06 sec. (6.46 ticks)
-CPLEX> Problem name         : c:\users\akjohn~1\appdata\local\temp\tmphrtluw.pyomo.lp
+CPLEX> Problem 'c:\users\akjohn~1\appdata\local\temp\tmpl4gumf.pyomo.lp' read.
+Read time = 0.08 sec. (6.47 ticks)
+CPLEX> Problem name         : c:\users\akjohn~1\appdata\local\temp\tmpl4gumf.pyomo.lp
 Objective sense      : Minimize
-Variables            :   36419  [Nneg: 34922,  Binary: 1497]
-Objective nonzeros   :   34728
-Linear constraints   :   64732  [Less: 64584,  Greater: 24,  Equal: 124]
-  Nonzeros           :  164115
+Variables            :   36369  [Nneg: 34874,  Binary: 1495]
+Objective nonzeros   :   34680
+Linear constraints   :   64708  [Less: 64560,  Greater: 24,  Equal: 124]
+  Nonzeros           :  164019
   RHS nonzeros       :     157
 
 Variables            : Min LB: 0.0000000        Max UB: 1.000000       
 Objective nonzeros   : Min   : 590.0000         Max   : 100000.0       
 Linear constraints   :
   Nonzeros           : Min   : 0.8500000        Max   : 600051.0       
-  RHS nonzeros       : Min   : 1.000000         Max   : 369456.8       
+  RHS nonzeros       : Min   : 1.000000         Max   : 351159.4       
 CPLEX> Tried aggregator 1 time.
-MIP Presolve eliminated 22758 rows and 12758 columns.
-MIP Presolve modified 8638 coefficients.
-Reduced MIP has 41974 rows, 23661 columns, and 106356 nonzeros.
-Reduced MIP has 1234 binaries, 0 generals, 0 SOSs, and 0 indicators.
-Presolve time = 0.09 sec. (88.64 ticks)
-Found incumbent of value 4.4472332e+011 after 0.14 sec. (116.66 ticks)
-Probing time = 0.22 sec. (11.23 ticks)
+MIP Presolve eliminated 17758 rows and 10105 columns.
+MIP Presolve modified 6175 coefficients.
+Reduced MIP has 46950 rows, 26264 columns, and 118908 nonzeros.
+Reduced MIP has 1235 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.12 sec. (91.95 ticks)
+Found incumbent of value 5.0031194e+011 after 0.16 sec. (122.69 ticks)
+Probing time = 0.22 sec. (12.13 ticks)
 Tried aggregator 1 time.
-Reduced MIP has 41974 rows, 23661 columns, and 106356 nonzeros.
-Reduced MIP has 1234 binaries, 0 generals, 0 SOSs, and 0 indicators.
-Presolve time = 0.08 sec. (56.46 ticks)
-Probing time = 0.05 sec. (11.12 ticks)
+Reduced MIP has 46950 rows, 26264 columns, and 118908 nonzeros.
+Reduced MIP has 1235 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.09 sec. (63.31 ticks)
+Probing time = 0.05 sec. (12.01 ticks)
 MIP emphasis: balance optimality and feasibility.
 MIP search method: dynamic search.
 Parallel mode: deterministic, using up to 8 threads.
-Root relaxation solution time = 1.40 sec. (1366.21 ticks)
+Root relaxation solution time = 2.22 sec. (1855.71 ticks)
 
         Nodes                                         Cuts/
    Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
 
-*     0+    0                      4.44723e+011  2.11637e+008            99.95%
-*     0+    0                      1.31643e+010  2.11637e+008            98.39%
-      0     0  1.07229e+010     1  1.31643e+010  1.07229e+010       28   18.55%
-*     0+    0                      1.07230e+010  1.07229e+010             0.00%
+*     0+    0                      5.00312e+011  2.11637e+008            99.96%
+*     0+    0                      1.52163e+010  2.11637e+008            98.61%
+      0     0  1.30849e+010     1  1.52163e+010  1.30849e+010       36   14.01%
+*     0+    0                      1.30852e+010  1.30849e+010             0.00%
 
 Root node processing (before b&c):
-  Real time             =    2.36 sec. (2186.92 ticks)
+  Real time             =    3.21 sec. (2559.94 ticks)
 Parallel b&c, 8 threads:
   Real time             =    0.00 sec. (0.00 ticks)
   Sync time (average)   =    0.00 sec.
   Wait time (average)   =    0.00 sec.
                           ------------
-Total (root+branch&cut) =    2.36 sec. (2186.92 ticks)
+Total (root+branch&cut) =    3.21 sec. (2559.94 ticks)
 
 Solution pool: 4 solutions saved.
 
-MIP - Integer optimal, tolerance (0.001/1e-006):  Objective = 1.0722956797e+010
-Current MIP best bound = 1.0722903151e+010 (gap = 53645.6, 0.00%)
-Solution time =    2.36 sec.  Iterations = 28  Nodes = 0 (1)
-Deterministic time = 2187.03 ticks  (928.28 ticks/sec)
+MIP - Integer optimal, tolerance (0.001/1e-006):  Objective = 1.3085230636e+010
+Current MIP best bound = 1.3084913930e+010 (gap = 316706, 0.00%)
+Solution time =    3.21 sec.  Iterations = 36  Nodes = 0 (1)
+Deterministic time = 2560.05 ticks  (796.78 ticks/sec)
 
-CPLEX> Incumbent solution written to file 'c:\users\akjohn~1\appdata\local\temp\tmp_jnkpn.cplex.sol'.
+CPLEX> Incumbent solution written to file 'c:\users\akjohn~1\appdata\local\temp\tmpfrhzzc.cplex.sol'.
 CPLEX> 
