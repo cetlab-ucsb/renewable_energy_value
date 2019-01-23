@@ -370,7 +370,7 @@ print(head(results.processed))
 
 write results csv
 
-```{r, echo=FALSE, eval=FALSE}
+```{r, echo=FALSE, eval=TRUE}
 write.csv(results.processed, file = paste0(output.folder.processed.results, "results_processed_summary.csv"))
 ```
 
