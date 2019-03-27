@@ -34,6 +34,7 @@ library(grid)
 #library(xts)
 library(stringr)
 library(cowplot)
+library(plyr)
 #library(dplyr)
 #library(rgdal) # for maps
 #library(ggmap) # comes with a them_nothing() function
@@ -47,6 +48,7 @@ library(knitr)
 library(plotly)
 library(gtable)
 library(egg)
+library(scales)
 #library(regex)
 
 ```
@@ -72,12 +74,13 @@ getwd()
 knitr::opts_chunk$set(echo=FALSE, comment=NA, warning=FALSE, message=FALSE, include=TRUE)
 ```
 
-Input files
+Define input files...
 
 ```{r, input file names, echo=FALSE}
-input.folder <- "india_REV_input/" # Remove the "../" if you want to knit the document. Issues with specifying working directory
-output.folder <- "india_REV_output/"
-output.folder.processed.results <- "processed_results/"
+input.folder <- "../india_REV_input/" # Remove the "../" if you want to knit the document. Issues with specifying working directory
+output.folder <- "../india_REV_output/"
+output.folder.processed.results <- "../processed_results/"
+output.folder.paper <- "../processed_results/paper/"
 #results.folder <- "processed_results_coalHC_coalLC_SolarLC20p/"
 input.results.fname <- "results_all_scenarios.csv"
 emissions.fname <- "emissions.csv"
@@ -88,13 +91,13 @@ scenario.inputs.fname <- "REvalue_input_csv.csv"
 
 ```
 
-Specify scenarios to process
+Specify scenarios to process...
 
 ```{r, scenarios, echo=FALSE}
-scenarios <- c("base", "coal_55mingen", "coal_ccgt_0mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC", "load_modD0M0_energyOnly", "load_modD50M0_energyOnly", "load_modD25M25_energyOnly") 
+scenarios <- c("base", "coal_55mingen", "coal_ccgt_0mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery60", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "battery60B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC", "load_modD0M0_energyOnly", "load_modD50M0_energyOnly", "load_modD25M25_energyOnly") 
 ```
 
-User parameter inputs
+User parameter inputs...
 
 ```{r, parameter inputs, echo=FALSE}
 INR_USD <- 65
@@ -105,7 +108,7 @@ plot.individual.scenario = "yes"
 re_targets_to_plot = "200-400-600" # "200-300-400" OR "200-400-600"
 ```
 
-Function to grab legend
+Function to grab legend...
 
 ```{r, grab legend, echo=FALSE}
 g_legend<-function(a.gplot){
@@ -115,7 +118,7 @@ g_legend<-function(a.gplot){
   return(legend)}
 ```
 
-Import results and other parameter from csv files
+Import results and other parameter from csv files...
 
 ```{r, import csvs, echo=FALSE}
 # Import the results and other parameters
@@ -129,7 +132,7 @@ scenario.inputs <- fread(paste0(input.folder, scenario.inputs.fname))
 ```
 
 
-Creating empty results data tables and lists for plots.
+Creating empty results data tables and lists for plots...
 
 ```{r, create empty tables and lists for plots, echo=FALSE}
 # Results processed data table
@@ -156,7 +159,7 @@ p_vre_sys_pLoad <- list()
 
 ```
 
-Capital recovery factor
+Capital recovery factor...
 
 ```{r, crf, echo=FALSE}
 # Capital recovery factor (CRF)
@@ -165,9 +168,9 @@ crf.battery <- (disc_rate*(1+disc_rate)^battery_life)/((1+disc_rate)^battery_lif
 ```
 
 
-Preparing the results input table.
-Splitting the scenario and scenario_econ_dispatch names into 2.
-Replacing the No Re scenario builds S0W0 for battery storage scenarios with the base S0W0 scenario numbers. 
+Preparing the results input table...
+<!--Splitting the scenario and scenario_econ_dispatch names into 2.-->
+<!--Replacing the No Re scenario builds S0W0 for battery storage scenarios with the base S0W0 scenario numbers. -->
 
 ```{r, prepping results table, echo=FALSE}
 # Split the scenario column into 2. This should have been done in the python script
@@ -186,42 +189,74 @@ results.input[grepl("bat", scenario_main) & scenario == "S0W0",cols.to.replace] 
 ```
 
 ### Variables description
-VRE is variable renewable energy.
+VRE stands for variable renewable energy.
 
-#### Total annual system-wide costs
-**total_cost_new_conv**: Total annual cost of new conventional capacity (annualized cost)
-**total_cost_vre**: Total annual cost of VRE in million USD (annualized cost)
-**total_cost_capacity**: Total cost of conventional + VRE capacity i.e. total_cost_new_conv + total_cost_vre
-**total_cost_energy**: Total annual cost of energy generation from all generation sources (result from economic dispatch model)
-**total_cost**: Total annual cost i.e. total_cost_capacity + total_cost_energy (annualized fixed costs of existing conventional capacity is not included here. Cancels our for additional costs of VRE)
-**system_cost_vre**: Total annual additional cost of vre i.e. (total cost of VRE scenario - total cost of zero VRE scenario)
+### Energy generation, capacity, and dispatch costs - inputs from REV model script
+**dispatch_cost**: Total annual dispatch cost  
+**ann_gen_total_MWh**: Annual total energy generation (includes losses due to battery storage)  
+**ann_gen_vre_nocurt_MWh**: Uncurtailed VRE generation potential  
+**ann_gen_vre_MWh**: Annual VRE energy generation  
+**ann_curt_vre_MWh**: Annual curtailed VRE generation  
+**ann_gen_solarPV_MWh**: Annual Solar PV energy generation  
+**ann_gen_wind_MWh**: Annual Wind energy generation  
+**ann_gen_coal_MWh**: Annual Coal energy generation  
+**ann_gen_gas_ccgt_MWh**: Annual CCGT energy generation  
+**ann_gen_gas_ct_MWh**: Annual CT energy generation  
+**ann_gen_diesel_MWh**: Annual Diesel energy generation  
+**ann_gen_hydro_MWh**: Annual Hydro (including storage hydro and RoR) energy generation  
+**ann_gen_nuclear_MWh**: Annual Nuclear energy generation  
+**ann_gen_other_MWh**: Annual 'Other' energy generation including biomass, bagasse.  
+**ann_discharge_bat_storage_MWh**: Annual battery storage discharge  
+**ann_charge_bat_storage_MWh**: Annual battery storage charge  
+**new_capacity_coal_MW**: New coal capacity build  
+**new_capacity_gas_ccgt_MW**: New ccgt capacity build  
+**new_capacity_gas_ct_MW**: New ct capacity build  
+**capacity_vre_MW**: VRE capacity  
+**capacity_solarPV_MW**: Solar PV capacity  
+**capacity_wind_MW**: Wind capacity  
+**capacity_bat_storage_MW**: Battery storage capacity in MW  
+**capacity_bat_storage_MWh**: Battery storage capacity in MWh (MWh/MW gives number of hours of battery storage)  
+
+#### Total annual costs
+**ann_cap_cost_coal_mil**: Annual capital cost of coal in millions
+**ann_cap_cost_ccgt_mil**: Annual capital cost of CCGT in millions
+**ann_cap_cost_ct_mil**: Annual capital cost of CT in millions
+**ann_cap_cost_solar_mil**: Annual capital cost of solar PV in millions
+**ann_cap_cost_wind_mil**: Annual capital cost of wind in millions
+**ann_cap_cost_battery_mil**: Annual capital cost of battery storage in millions
+**total_cost_new_conv**: Total annual cost of new conventional capacity (annualized cost)   
+**total_cost_vre**: Total annual cost of VRE in million USD (annualized cost)   
+**total_cost_capacity**: Total cost of conventional + VRE capacity i.e. total_cost_new_conv + total_cost_vre  
+**total_cost_energy**: Total annual cost of energy generation from all generation sources (result from economic dispatch model)   
+**total_cost**: Total annual cost i.e. total_cost_capacity + total_cost_energy (annualized fixed costs of existing conventional capacity is not included here. Cancels our for additional costs of VRE)   
+**system_cost_vre**: Total annual additional cost of vre i.e. (total cost of VRE scenario - total cost of zero VRE scenario)   
 
 #### Costs per curtailed or uncrutailed VRE
-**cost_vre_pMWh**: Cost of VRE per MWh of VRE after curtailment i.e. (total_cost_vre/ann_gen_vre_MWh)
-**cost_vre_nocurt_pMWh**: Cost of VRE per MWh of VRE before curtailment i.e. (total_cost_vre/ann_gen_vre_nocurt_MWh)
-**cost_battery_pMWh**: Cost of battery storage per MWh of VRE after curtailment i.e. (ann_cap_cost_battery_mil*10^6/ann_gen_vre_MWh)
-**cost_battery_nocurt_pMWh**: Cost of battery storage per MWh of VRE before curtailment i.e. (ann_cap_cost_battery_mil*10^6/ann_gen_vre_nocurt_MWh)
-**cost_vre_battery_pMWh**: Cost of VRE and battery storage per MWh of VRE after curtailment i.e. (cost_vre_pMWh + cost_battery_pMWh) <-- USE THIS FOR EITHER OR BOTH VRE AND BATTERY
-**cost_vre_battery_nocurt_pMWh**: Cost of VRE and battery storage per MWh of VRE before curtailment i.e. (cost_vre_nocurt_pMWh + cost_battery_nocurt_pMWh) <-- USE THIS FOR EITHER OR BOTH VRE AND BATTERY
+**cost_vre_pMWh**: Cost of VRE per MWh of VRE after curtailment i.e. (total_cost_vre/ann_gen_vre_MWh)   
+**cost_vre_nocurt_pMWh**: Cost of VRE per MWh of VRE before curtailment i.e. (total_cost_vre/ann_gen_vre_nocurt_MWh)   
+**cost_battery_pMWh**: Cost of battery storage per MWh of VRE after curtailment i.e. (ann_cap_cost_battery_mil*10^6/ann_gen_vre_MWh)   
+**cost_battery_nocurt_pMWh**: Cost of battery storage per MWh of VRE before curtailment i.e. (ann_cap_cost_battery_mil*10^6/ann_gen_vre_nocurt_MWh)   
+**cost_vre_battery_pMWh**: Cost of VRE and battery storage per MWh of VRE after curtailment i.e. (cost_vre_pMWh + cost_battery_pMWh) <-- USE THIS FOR EITHER VRE OR BOTH VRE AND BATTERY   
+**cost_vre_battery_nocurt_pMWh**: Cost of VRE and battery storage per MWh of VRE before curtailment i.e. (cost_vre_nocurt_pMWh + cost_battery_nocurt_pMWh) <-- USE THIS FOR EITHER VRE OR BOTH VRE AND BATTERY   
 
 #### Capacity and energy value
-**capacity_value_pMWh**: Capacity value of VRE target per VRE generation after curtailment i.e. difference between annualized costs of new conventional capacity of VRE scenario and zero VRE scenario per MWh of VRE generation
-**energy_value_pMWh**: Energy value of VRE target per VRE generation after curtailment i.e. difference between total annual energy costs of VRE scenario and zero VRE scenario per MWh of VRE generation
-**total_value_pMWh**: Total of capacity and energy value of VRE i.e. (capacity_value_pMWh + energy_value_pMWh)
+**capacity_value_pMWh**: Capacity value of VRE target per VRE generation after curtailment i.e. difference between annualized costs of new conventional capacity of VRE scenario and zero VRE scenario per MWh of VRE generation   
+**energy_value_pMWh**: Energy value of VRE target per VRE generation after curtailment i.e. difference between total annual energy costs of VRE scenario and zero VRE scenario per MWh of VRE generation   
+**total_value_pMWh**: Total of capacity and energy value of VRE i.e. (capacity_value_pMWh + energy_value_pMWh)   
 
 #### Additional system cost due to VRE
-**system_cost_vre_pMWh**: Additional system cost due to VRE for a VRE scenario compared to a zero VRE scenario  per MWH of VRE i.e. (cost_vre_pMWh + cost_battery_pMWh - capacity_value_pMWh - energy_value_pMWh)
-**system_cost_add_pMWh_load**: Additional system cost due to VRE for a VRE scenario compared to a zero VRE scenario  per MWH of Load served
-**system_cost_add_perc**: Additional overall cost of VRE as a % of no VRE system cost
+**system_cost_vre_pMWh**: Additional system cost due to VRE for a VRE scenario compared to a zero VRE scenario  per MWH of VRE i.e. (cost_vre_pMWh + cost_battery_pMWh - capacity_value_pMWh - energy_value_pMWh)   
+**system_cost_add_pMWh_load**: Additional system cost due to VRE for a VRE scenario compared to a zero VRE scenario  per MWH of Load served. (Load served includes battery storage losses in battery scenarios. Additional system cost is divided by ann_gen_total_MWh.)   
+**system_cost_add_perc**: Additional overall cost of VRE as a % of no VRE system cost   
 
 #### Cost or benefit of mitigating CO2 emissions
-**total_emissions_co2_milTonnes**: Total CO2 emissions in million tonnes
-**grid_emissions_factor_kg_kWh**: Grid emissions factor
-**cost_emissions_reduction_pTonneCO2_avg**: Average cost of CO2 reduction in USD per tonne of CO2
-**cost_emissions_reduction_pTonneCO2_marginal**: Marginal cost of CO2 reduction in USD per tonne of CO2 (for every 200 GW target)
+**total_emissions_co2_milTonnes**: Total CO2 emissions in million tonnes   
+**grid_emissions_factor_kg_kWh**: Grid emissions factor   
+**cost_emissions_reduction_pTonneCO2_avg**: Average cost of CO2 reduction in USD per tonne of CO2   
+**cost_emissions_reduction_pTonneCO2_marginal**: Marginal cost of CO2 reduction in USD per tonne of CO2 (for every 200 GW target)   
 
 
-Processing the results
+Processing results...
 
 ```{r, processing results, results='asis', echo=FALSE}
 for (sc in 1:length(scenarios)){
@@ -280,19 +315,19 @@ for (sc in 1:length(scenarios)){
   # Total cost differences / increases between scenarios and No RE scenario
   results[scenario!="S0W0", system_cost_vre:= total_cost - total_cost_noRE]
   
-  # Cost of VRE per MWh
+  # Cost of VRE per MWh of absorbed VRE generation
   results[,cost_vre_pMWh:= total_cost_vre*10^6/ann_gen_vre_MWh]
   results[,cost_vre_nocurt_pMWh:= total_cost_vre*10^6/ann_gen_vre_nocurt_MWh]
   
-  # Cost of battery storage per MWh
+  # Cost of battery storage per MWh of absorbed VRE generation
   results[,cost_battery_pMWh:= ann_cap_cost_battery_mil*10^6/ann_gen_vre_MWh]
   results[,cost_battery_nocurt_pMWh:= ann_cap_cost_battery_mil*10^6/ann_gen_vre_nocurt_MWh]
   
-  # Cost of VRE and battery storage per MWh
+  # Cost of VRE and battery storage per MWh of absorbed VRE generation
   results[,cost_vre_battery_pMWh:= (cost_vre_pMWh + cost_battery_pMWh)]
   results[,cost_vre_battery_nocurt_pMWh:= (cost_vre_nocurt_pMWh + cost_battery_nocurt_pMWh)]
   
-  # Value per MWh
+  # Value per MWh of absorbed VRE generation
   results[scenario!="S0W0",capacity_value_pMWh:= (total_cost_new_conv_noRE - total_cost_new_conv)*10^6/ann_gen_vre_MWh]
   results[scenario!="S0W0",energy_value_pMWh:= (total_cost_energy_noRE - total_cost_energy)*10^6/ann_gen_vre_MWh]
   results[scenario!="S0W0",total_value_pMWh:= (capacity_value_pMWh + energy_value_pMWh)]
@@ -348,10 +383,23 @@ for (sc in 1:length(scenarios)){
   results.vre.costs[is.na(technology), technology:= "Solar PV"]
   results.vre.costs[, Capacity:= c(200,300,400, 600, 200, 300, 400, 600)]
   
-  # Avoided conventional generation capacity
+  ## Avoided conventional generation capacity
   total_cap_new_conv_noRE <- results[scenario=="S0W0", new_capacity_coal_MW + new_capacity_gas_ccgt_MW + new_capacity_gas_ct_MW]
   results[scenario!="S0W0", avoided_conv_cap_mw_perVREmw:= (total_cap_new_conv_noRE - (new_capacity_coal_MW + new_capacity_gas_ccgt_MW + new_capacity_gas_ct_MW))/capacity_vre_MW]
   
+  ## Share of coal in new conventional generation capacity
+  results[, coal_share_new_conv_cap:= new_capacity_coal_MW/(new_capacity_coal_MW + new_capacity_gas_ccgt_MW + new_capacity_gas_ct_MW)]
+  
+  ## Plant load factors for conventional generation
+  results[, existing_capacity_coal_MW := existing.gen.capacity[technology == 'coal', capacity_MW]]
+  results[, existing_capacity_ccgt_MW := existing.gen.capacity[technology == 'gas_ccgt', capacity_MW]]
+  results[, existing_capacity_ct_MW := existing.gen.capacity[technology == 'gas_ct', capacity_MW]]
+  
+  results[, plf_coal := (ann_gen_coal_MWh / ((new_capacity_coal_MW + existing_capacity_coal_MW)*8760))]
+  results[, plf_gas := ((ann_gen_gas_ccgt_MWh + ann_gen_gas_ct_MWh) / ((new_capacity_gas_ccgt_MW + existing_capacity_ccgt_MW + new_capacity_gas_ct_MW + existing_capacity_ct_MW)*8760))]
+  
+  
+  # Add results to results for all scenarios
   results.processed <- rbind(results.processed, results)
   results.costs.emissions.processed <- rbind(results.costs.emissions.processed, results.costs.emissions)
   
@@ -363,25 +411,25 @@ for (sc in 1:length(scenarios)){
   
 ```
 
-Processed Results Table
+Processed Results Table...
 ```{r}
 print(head(results.processed))
 ```
 
-write results csv
+write results csv...
 
 ```{r, echo=FALSE, eval=TRUE}
 write.csv(results.processed, file = paste0(output.folder.processed.results, "results_processed_summary.csv"))
 ```
 
-Scenarios for individual plots
+Scenarios for individual plots...
 
 ```{r, scenarios for individual plots, echo=FALSE}
-scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC")
+scenarios <- c("base", "coal_55mingen", "wind10LC", "wind20LC", "wind30LC", "solar10LC", "solar20LC", "solar30LC", "wind30LC_solar30LC", "wind120HH_solar1A", "battery15", "battery30", "battery60","battery15B25LC", "battery30B25LC", "battery15B50LC", "battery30B50LC", "battery60B50LC", "high_cost_coal", "wind30LC_solar30LC_coalHC")
 
 ```
 
-Pull scenario sensitivities
+Pull scenario sensitivities...
 ```{r, scenario sensitivities, echo=FALSE}
 scenarios.sensitivity <- ""
 for (sc in 1:length(scenarios)){
@@ -389,18 +437,22 @@ for (sc in 1:length(scenarios)){
 }
 ```
 
-Plot themes, positions, and labels
-PLus choose results based on RE targets e.g. 200, 300, 400 GW OR 200, 400, 600 GW, based on user input
+Plot themes, positions, and labels. 
+<!--Plus choose results based on RE targets e.g. 200, 300, 400 GW OR 200, 400, 600 GW, based on user input-->
+Processing `r re_targets_to_plot` GW scenarios...
 ```{r, plot themes, echo=FALSE}
 theme_set(theme_cowplot(font_size=9))
 colors_RD3 <- c("#fd8d3c", "#2b8cbe", "#969696")
 colors_RD5 <- c("#2b8cbe", "#fd8d3c", "#969696")
 colors_RD7 <- c("#5588bb", "#66bbbb", "#aa6644", "#99bb55","#ee9944", "#444466", "#bb5555")
+colors_RD8 <- c("#5588bb", "#aa6644", "#99bb55","#ee9944", "#66bbbb", "#444466", "#bb5555")
 colors_emissions_RD4 <- c("#d95f0e", "#999999", "#ca0020", "#a6611a", "#3a3938" )
+colors_solar_wind_split <- c("#252525", "#3182bd", "#9ecae1", "#66c2a4", "#fec44f", "#d95f0e")
 
 width.bar = 0.7
 
 positions2 <- c("0-100", "25-75", "50-50", "75-25", "100-0")
+positions4 <- c("0-0", "0-100", "25-75", "50-50", "75-25", "100-0")
 positions.tech <- c("New Coal", "New Gas CCGT", "New Gas CT", "Solar PV", "Wind", "Existing Coal", "Existing Gas CCGT", "Existing Gas CT", "Existing Diesel", "Existing Hydro Storage", "Existing Hydro RoR", "Existing Nuclear", "Existing Other")
 #Labels
 share.labels <- c("S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%", "S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%", "S 0% - W 100%", "S 25% - W 75%", "S 50% - W 50%", "S 75% - W 25%", "S 100% - W 0%")
@@ -412,6 +464,8 @@ if (re_targets_to_plot == "200-300-400"){
   positions <- c("S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
   positions3 <- c("S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0")
   share.labels2 <- c("S 0 - W 0", "S 0 - W 200", "S 50 - W 150", "S 100 - W 100", "S 150 - W 50", "S 200 - W 0", "S 0 - W 300", "S 75 - W 225", "S 150 - W 150", "S 225 - W 75", "S 300 - W 0", "S 0 - W 400", "S 100 - W 300", "S 200 - W 200", "S 300 - W 100", "S 400 - W 0")
+  target.labels <- c("0", "200", "300", "400")
+  target.labels2 <- c("0 GW", "200 GW", "300 GW", "400 GW")
   
   y_limits_vre_share <- c(0, 0.5)
   y_limits_vre_cost <- c(0, 100)
@@ -426,18 +480,20 @@ if (re_targets_to_plot == "200-300-400"){
   positions <- c("S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450", "S300W300", "S450W150", "S600W0")
   positions3 <- c("S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450", "S300W300", "S450W150", "S600W0")
   share.labels2 <- c("S 0 - W 0", "S 0 - W 200", "S 50 - W 150", "S 100 - W 100", "S 150 - W 50", "S 200 - W 0", "S 0 - W 400", "S 100 - W 300", "S 200 - W 200", "S 300 - W 100", "S 400 - W 0", "S 0 - W 600", "S 150 - W 450", "S 300 - W 300", "S 450 - W 150", "S 600 - W 0")
+  target.labels <- c("0", "200", "400", "600")
+  target.labels2 <- c("0 GW", "200 GW", "400 GW", "600 GW")
   
   y_limits_vre_share <- c(0, 0.6)
   y_limits_vre_cost <- c(0, 150)
   y_limits_capacity_value <- c(0, 150)
   y_limits_energy_value <- c(0, 150)
-  y_limits_sys_cost <- c(-5, 25)
+  y_limits_sys_cost <- c(-6, 25)
   y_limits_cost_emissions <- c(-25, 125)
 }
 
 ```
 
-Create individual plots [Disabled with eval = FALSE]
+Create individual plots [Disabled with eval = FALSE]...
 
 ```{r, individual plots, eval=FALSE, echo=FALSE, results='asis'}
 for (sc in 1:length(scenarios)){
@@ -713,7 +769,7 @@ for (sc in 1:length(scenarios)){
 
 ```
 
-Print and save the plots [Disabled with eval=FALSE]
+Print and save the plots [Disabled with eval=FALSE]...
 ```{r, print and save plots, echo=FALSE, eval=FALSE}
 if(plot.individual.scenario == "yes"){
   for(sc in 1:length(scenarios)){
@@ -788,8 +844,9 @@ if(plot.individual.scenario == "yes"){
 ```
 
 
-Plot functions
-1) Line plots with facets
+###Plot functions  
+1) Line plots with facets by VRE target  
+2) Line plots with facets by VRE split
 
 ```{r, plot functions, echo=FALSE}
 
@@ -802,16 +859,20 @@ plot.facet.allLines <- function(results.input, main_variable, scenarios.to.inclu
   data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
 
   q <- ggplot(data.plot, aes(scenario, get(main_variable), group = scenario_main, color = scenario_main, linetype = scenario_main)) +
-  geom_line(size=0.5) +
-  facet_wrap(~scenario_build, scales = "free_x") +
-  labs(y = y_label, x = NULL) +
-  scale_color_manual(labels = scenarios.labels, values = plot.colors) + 
+    geom_line(size=0.5) +
+    #theme_bw() +
+    facet_wrap(~scenario_build, scales = "free_x") +
+    labs(y = y_label, x = NULL) +
+    scale_color_manual(labels = scenarios.labels, values = plot.colors) + 
     scale_linetype_manual(labels = scenarios.labels, values = plot.linetype) +
-  scale_x_discrete(breaks=positions, labels=share.labels) +
+    scale_x_discrete(breaks=positions, labels=share.labels) +
     ggtitle(plot_title) +
-  theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="bottom", legend.title = element_blank(), legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), plot.title = element_text(face="plain")) +
-  scale_y_continuous(limits = y_limits, sec.axis = sec_axis(~.*y_sec_multiplier, name = y_label_sec)) +
-  background_grid()
+    theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.position="bottom", legend.title = element_blank(), 
+          legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), 
+          plot.title = element_text(face="plain"), 
+          strip.background = element_rect(colour="black")) +
+    scale_y_continuous(limits = y_limits, sec.axis = sec_axis(~.*y_sec_multiplier, name = y_label_sec)) +
+    background_grid()
   
   return(q)
 }
@@ -824,16 +885,21 @@ plot.allLines.byVREsplit <- function(results.input, main_variable, scenarios.to.
   setnames(data.plot, c("V5"), c(eval(main_variable)))
   data.plot$scenario_split <- reorder.factor(data.plot$scenario_split, new.order=positions2)
   
-  q <- ggplot(data.plot, aes(scenario_build, get(main_variable), group = interaction(scenario_split, scenario_main), color = scenario_main, linetype = scenario_split)) +
-  geom_line(size=0.5) +
-  labs(y = y_label, x = NULL) +
-  scale_color_manual(labels = scenarios.labels.vre, values = plot.colors) + 
-  scale_linetype_manual(labels = share.labels, values = plot.linetype) +
-  #scale_x_discrete(breaks=positions, labels=share.labels) +
+  q <- ggplot(data.plot, aes(scenario_build, get(main_variable), group = interaction(scenario_split, scenario_main), color = scenario_main,
+                             linetype = scenario_split)) +
+    geom_line(size=0.5) +
+    #theme_bw() +
+    labs(y = y_label, x = NULL) +
+    scale_color_manual(labels = scenarios.labels.vre, values = plot.colors) + 
+    scale_linetype_manual(labels = share.labels, values = plot.linetype) +
+    #scale_x_discrete(breaks=positions, labels=share.labels) +
     ggtitle(plot_title) +
-  theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=1), legend.position="bottom", legend.title = element_blank(), legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), plot.title = element_text(face="plain")) +
-  scale_y_continuous(limits = y_limits, sec.axis = sec_axis(~.*y_sec_multiplier, name = y_label_sec)) +
-  background_grid()
+    theme(axis.text.x = element_text(angle=0, hjust=0.5, vjust=1), legend.position="bottom", legend.title = element_blank(), 
+          legend.key = element_rect(size=5, fill = "white"), legend.key.size = unit(0.5, 'lines'), legend.key.width = unit(2, 'lines'), 
+          plot.title = element_text(face="plain"),
+          strip.background = element_rect(color="black")) +
+    scale_y_continuous(limits = y_limits, sec.axis = sec_axis(~.*y_sec_multiplier, name = y_label_sec)) +
+    background_grid()
   
   return(q)
 }
@@ -841,13 +907,145 @@ plot.allLines.byVREsplit <- function(results.input, main_variable, scenarios.to.
 
 ```
 
+### RE share, RE curtailment, Coal PLFs, and grid emissions factors
+```{r, vre share & curt - coal plfs - emissions factors, echo=FALSE}
+
+
+scenarios.to.include.multivar <- c("base", "wind30LC_solar30LC_coalHC", 
+                              "coal_55mingen",
+                              "battery30", "battery60",
+                              "load_modD25M25_energyOnly", "load_modD50M0_energyOnly")
+scenarios.labels.multivar <- c("Base case", "Coal cost\nhigh",
+                          "Min gen level\ncoal fleet 55%",
+                          "Battery storage \n30 GW 4 h", "Battery storage \n60 GW 4 h",
+                          "Demand profile\nIndia 50%-\nDL & MUM 25%", 
+                          "Demand profile\nIndia 50%-\nDL 50%")
+
+
+
+point_shapes_multivar <- c(16, 3, 1, 0, 2, 4)
+colors_solar_wind_split <- c("#969696", "#0868ac", "#9ecae1", "#31a354", "#fec44f", "#d95f0e")
+
+
+plot.facet.points <- function(results.input, main_variable, scenarios.to.include, scenarios.labels, positions, plot.colors, plot_shapes, plot_title, y_limits, y_label){
+  
+  # Process data to plot
+  data.plot <- results.input[scenario_main %in% scenarios.to.include, .(scenario_main, scenario, scenario_build, scenario_split, get(main_variable))]
+  setnames(data.plot, c("V5"), c(eval(main_variable)))
+  set(data.plot,which(is.na(data.plot[[eval(main_variable)]])),eval(main_variable),0) # Convert NAs to zeros for No Re scenarios
+  #data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions3)
+  data.plot$scenario_split <- reorder.factor(data.plot$scenario_split, new.order=positions4)
+  # Replace scenario main with labels
+  data.plot$scenario_main <- mapvalues(data.plot$scenario_main, scenarios.to.include, scenarios.labels)
+  data.plot$scenario_main <- reorder.factor(data.plot$scenario_main, new.order=scenarios.labels)
+  
+  q = ggplot(data.plot, aes(scenario_build, get(main_variable), group = scenario_split, color = scenario_split)) +
+    geom_point(size=1) +
+    theme_bw() +
+    facet_wrap(~scenario_main, strip.position = "top", nrow = 1) +
+    labs(y = y_label, x = "Variable Renewable Energy (VRE) target (GW)") +
+    scale_color_manual(values = plot.colors, name = "Solar % - Wind %") +
+    #scale_shape_manual(values=point_shapes_multivar, name = "Solar % - Wind %") +
+    expand_limits(y=0) +
+    scale_x_discrete(expand=c(0,1), labels = target.labels) +
+    theme(text = element_text(size=8), axis.ticks.x = element_blank(),
+          axis.text.y = element_text(size=7), axis.title.y = element_text(size=7),
+          strip.text=element_text(angle=0),
+          strip.background = element_rect(color="black", fill="white"), strip.placement = "outside",
+          panel.grid.minor = element_blank())
+  return(q)
+}
+
+  
+p_vre_share_mult_scenarios <- plot.facet.points(results.processed, "vre_share_after_curt", scenarios.to.include.multivar, scenarios.labels.multivar, positions3, colors_solar_wind_split, point_shapes_multivar, "VRE share of total electricity generation", y_limits_vre_share, "VRE \nshare")
+  
+p_vre_curt_mult_scenarios <- plot.facet.points(results.processed, "vre_curt", scenarios.to.include.multivar, scenarios.labels.multivar, positions3, colors_solar_wind_split, point_shapes_multivar, "VRE curtailment", y_limits_vre_share, "VRE \ncurtailment")
+
+p_avoided_conv_cap_mult_scenarios <- plot.facet.points(results.processed, "avoided_conv_cap_mw_perVREmw", scenarios.to.include.multivar, scenarios.labels.multivar, positions3, colors_solar_wind_split, point_shapes_multivar, "Conventional\ncapacity avoided\nper VRE MW", y_limits_vre_share, "Conventional\ncapacity avoided\n(MW per VRE MW)")
+
+p_coal_plf_mult_scenarios <- plot.facet.points(results.processed, "plf_coal", scenarios.to.include.multivar, scenarios.labels.multivar, positions3, colors_solar_wind_split, point_shapes_multivar, "Coal fleet plant load factors", y_limits_vre_share, "Coal fleet\nplant load factors")
+
+p_emissions_factor_mult_scenarios <- plot.facet.points(results.processed, "grid_emissions_factor_kg_kWh", scenarios.to.include.multivar, scenarios.labels.multivar, positions3, colors_solar_wind_split, point_shapes_multivar, "Grid emissions factor", y_limits_vre_share, "Emissions \n factor \n (kg CO2/kWh)")
+
+
+g_vre_share_mult_scenarios <- ggplotGrob(p_vre_share_mult_scenarios + 
+                                           scale_y_continuous(labels = percent, limits = c(0,1)) + 
+                                           theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank()))
+
+g_vre_curt_mult_scenarios <- ggplotGrob(p_vre_curt_mult_scenarios + 
+                                          scale_y_continuous(labels = percent, limits = c(NA,1)) + 
+                                           theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank(),
+                                                 strip.background = element_blank(), strip.text = element_blank()))
+
+g_avoided_conv_cap_mult_scenarios <- ggplotGrob(p_avoided_conv_cap_mult_scenarios + 
+                                          scale_y_continuous(limits = c(0,1)) + 
+                                           theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank(),
+                                                 strip.background = element_blank(), strip.text = element_blank()))
+
+g_coal_plf_mult_scenarios <- ggplotGrob(p_coal_plf_mult_scenarios + 
+                                          scale_y_continuous(labels = percent, limits = c(0,1)) + 
+                                           theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank(),
+                                                 strip.background = element_blank(), strip.text = element_blank()))
+
+g_emissions_factor_mult_scenarios <- ggplotGrob(p_emissions_factor_mult_scenarios + scale_y_continuous(limits = c(0,1)) +
+                                           theme(legend.position = "none", 
+                                                 axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1, size = 7),
+                                                 strip.background = element_blank(), strip.text = element_blank()))
+
+
+plot.legend <- g_legend(p_vre_share_mult_scenarios + theme(legend.position = "right"))
+
+
+grob_multivar.plot <- 
+  arrangeGrob(grobs = 
+                list(rbind(g_vre_share_mult_scenarios, g_vre_curt_mult_scenarios, g_avoided_conv_cap_mult_scenarios, g_coal_plf_mult_scenarios,
+                           g_emissions_factor_mult_scenarios, size = "last")), ncol = 1)
+
+grob_multivar.plot <-
+  arrangeGrob(arrangeGrob(grobs =
+                list(rbind(g_vre_share_mult_scenarios, g_vre_curt_mult_scenarios, g_avoided_conv_cap_mult_scenarios, g_coal_plf_mult_scenarios,
+                           g_emissions_factor_mult_scenarios, size = "last")), ncol = 1), plot.legend, ncol=2, widths=c(10,2))
+
+grid.newpage()
+grid.draw(grob_multivar.plot)
+
+ggsave(file = paste0(output.folder.paper, "share_curt_plf_emissions", "_v0", ".png"), grob_multivar.plot, width=7, height=6)
+#ggsave(file = paste0(output.folder.paper, "share_curt_plf_emissions", "_v0", ".pdf"), grob_multivar.plot, width=8, height=6.5)
+
+
+
+
+```
+
+
+### Solar and wind share split
+```{r, solar wind share plot, echo=FALSE, message=FALSE}
+
+colors.vre <- c("#FF9900", "#006699")
+
+data.plot <- results.processed[scenario!="S0W0" & scenario_main == "base", .(scenario_main, scenario, scenario_build, scenario_split)]
+data.plot[, c("wind", "solar") := data.table(str_split_fixed(scenario_split, "-", n=2))]
+data.plot <- melt(data.plot, id.vars = c("scenario_main", "scenario", "scenario_build", "scenario_split"), variable.name = "technology", value.name = "share")
+data.plot[, share_perc := as.numeric(share)/100]
+data.plot$scenario <- reorder.factor(data.plot$scenario, new.order=positions)
+
+p_vre_split <- ggplot(data.plot, aes(scenario, share_perc, group = technology, fill = technology)) +
+  geom_bar(stat = "identity", width = width.bar) +
+  #theme_bw() +
+  facet_wrap(~scenario_build, scales = "free_x") +
+  labs(y = "VRE share (%)", x = NULL) +
+  scale_fill_manual(values = colors.vre) + 
+  scale_x_discrete(breaks = positions, labels=share.labels) +
+  theme(axis.text.x = element_text(angle=90, hjust=1, vjust=1), legend.title = element_blank()) + scale_y_continuous(labels = percent, sec.axis = sec_axis(trans = ~.*1, name = "", breaks = derive(), labels = derive()))
+```
+
 
 ### Wind, solar and coal cost inividual plots
 ```{r, vre coal plots, echo=FALSE, message = FALSE}
 
 scenarios.to.include.vre <- c("base", "wind30LC", "solar30LC", "wind30LC_solar30LC", "wind30LC_solar30LC_coalHC")
-scenarios.labels.vre <- c("base wind, solar, coal costs", "low cost wind", "low cost solar", "low cost wind + solar", "low cost wind + solar + high cost coal")
-linetype_vre <- c("solid", rep("dotted", 2), "dashed", "solid")
+scenarios.labels.vre <- c("base wind, solar, coal costs", "low cost wind", "low cost solar", "low cost wind & solar", "low cost wind & solar + high cost coal")
+linetype_vre <- c("solid", rep("dashed", 3), "solid")
 
 
 ## Share of VRE
@@ -859,7 +1057,7 @@ data.plot.to.add$scenario <- reorder.factor(data.plot.to.add$scenario, new.order
 
 p_vre_share_w_noCurt <- p_vre_share + geom_line(data = data.plot.to.add, aes(scenario, vre_share_nocurt, group = scenario_main), color = "black", size=0.5) +
 facet_wrap(~scenario_build, scales = "free_x") +
-scale_y_continuous(limits = y_limits_vre_share, labels = percent)
+scale_y_continuous(limits = y_limits_vre_share, labels = scales::percent_format(accuracy = 2))
 p_vre_share_w_noCurt
 
 ## Cost of VRE
@@ -885,6 +1083,15 @@ p_cost_emissions_avg
 ```
 
 ### Wind solar and coal Plots in a Panel 
+#### Key Insights
+
+Uncurtailed VRE shares range from 17-20% for 200 GW, 30-38% for 400 GW, and 41-50% for 600 GW VRE targets.  
+
+However, after curtailment due to technical and economic reasons, VRE shares drop to 11-20% for 200 GW, 12-35% for 400 GW, and 13-43% for 600 GW VRE targets. 
+
+VRE curtailment is greatest for solar dominated scenarios. Because of the limit to minimum generation levels (70% in the base scenario), coal plants are unable to back down in order to accommodate solar generation in spit of its zero marginal cost. In this study, coal plants are assumed to stay online throughout the day if their generation is essential to meet net peak demand at any time of the day. 
+
+High cost coal, when costs for air pollution control systems are included, decreases average additional cost of VRE to the system to below zero for 3 out of the 5 VRE split scenarios with a 600 GW target because VRE displaces coal generation with a higher variable cost.   
 
 ```{r, vre panel, echo=FALSE, message = FALSE}
 
@@ -912,34 +1119,7 @@ grob_vre.plot <-
 grid.newpage()
 grid.draw(grob_vre.plot)
 
-
-
-```
-
-### Battery storage plots -- various formats -- Delete?
-
-```{r, battery storage plots, echo=FALSE, eval = FALSE}
-
-#scenarios.to.include <- c("base", "battery15", "battery15B25LC", "battery15B50LC")
-
-#scenarios.to.include <- c("base", "battery15", "battery15B25LC", "battery15B50LC", "battery30", "battery30B25LC", "battery30B50LC")
-
-scenarios.to.include.battery <- c("base", "battery15", "battery15B50LC", "battery30", "battery30B50LC")
-
-## System cost for VRE implementation per MWh Load served
-## All bars
-plot.sys_cost_add_pMWh_load.allBars(results.processed, scenarios.to.include.battery, positions)
-
-## All lines
-plot.sys_cost_add_pMWh_load.allLines(results.processed, scenarios.to.include.battery, positions)
-
-
-## Bar plus Lines
-plot.sys_cost_add_pMWh_load.barPlusLines(results.processed, scenarios.to.include.battery, positions)
-
-## Bar plus Points
-plot.sys_cost_add_pMWh_load.barPlusPoints(results.processed, scenarios.to.include.battery, positions)
-
+ggsave(file = paste0(output.folder.paper, "wind_solar_coal_costs_all_var", "_v0", ".png"), grob_vre.plot, width=7, height=5)
 
 ```
 
@@ -948,12 +1128,12 @@ plot.sys_cost_add_pMWh_load.barPlusPoints(results.processed, scenarios.to.includ
 
 ```{r, battery storage, echo=FALSE, message = FALSE}
 
-scenarios.to.include.battery <- c("base", "battery15", "battery30", "battery30B50LC")
-scenarios.labels.battery <- c("base case - no battery", "battery 15 GW 4h", "battery 30 GW 4h", "battery 30 GW 4h low cost")
-linetype_battery <- c("solid", rep("dashed", 2), "dotdash")
+scenarios.to.include.battery <- c("base", "battery30", "battery60", "battery60B50LC")
+scenarios.labels.battery <- c("base case - no battery", "battery 30 GW 4h", "battery 60 GW 4h", "battery 60 GW 4h low cost")
+linetype_battery <- c("solid", rep("dashed", 2), "solid")
 
 ## Share of VRE
-p_vre_share_w_storage <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
+p_vre_share_w_storage <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
 # Add vre share without curtailment as a black line
 data.plot.to.add <- results.processed[scenario!="S0W0" & scenario_main == "base", .(scenario_main, scenario, scenario_build, vre_share_nocurt)]
 #setnames(data.plot, c("V4"), c(eval(main_variable)))
@@ -961,29 +1141,29 @@ data.plot.to.add$scenario <- reorder.factor(data.plot.to.add$scenario, new.order
 
 p_vre_share_w_storage_w_noCurt <- p_vre_share_w_storage + geom_line(data = data.plot.to.add, aes(scenario, vre_share_nocurt, group = scenario_main), color = "black", size=0.5) +
 facet_wrap(~scenario_build, scales = "free_x") +
-scale_y_continuous(limits = y_limits_vre_share, labels = percent)
+scale_y_continuous(limits = y_limits_vre_share, labels = scales::percent_format(accuracy = 2))
 p_vre_share_w_storage_w_noCurt
 
 ## Cost of VRE and storage
-p_vre_storage <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery,  "Average Cost of VRE and Storage", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_vre_storage <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery,  "Average Cost of VRE and Storage", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_vre_storage
 
 ## Capacity value of VRE
-p_capacity_value_w_storage <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery, "Average Capacity Value of VRE and storage", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_capacity_value_w_storage <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery, "Average Capacity Value of VRE and storage", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_capacity_value_w_storage
 
 
 ## Energy value of VRE
-p_energy_value_w_storage <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery, "Average Energy Value of VRE and storage", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_energy_value_w_storage <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery, "Average Energy Value of VRE and storage", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_energy_value_w_storage
 
 
 ## System additional cost of VRE
-p_sys_cost_w_storage <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery, "Average Additional Cost of VRE and storage", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
+p_sys_cost_w_storage <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery, "Average Additional Cost of VRE and storage", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
 p_sys_cost_w_storage
 
 ## Cost of CO2 emissions mitigation
-p_cost_emissions_avg_w_storage <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD7, linetype_battery, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression((USD/tonne~CO[2])), expression((INR/kg~CO[2])), INR_USD/1000)
+p_cost_emissions_avg_w_storage <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.battery, scenarios.labels.battery, positions, colors_RD8, linetype_battery, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression(USD/tonne~CO[2]), expression(INR/kg~CO[2]), INR_USD/1000)
 p_cost_emissions_avg_w_storage
 
 ```
@@ -1019,6 +1199,7 @@ grid.draw(grob_storage.plot)
 #grid.newpage()
 #grid.draw(g_storage)
 
+ggsave(file = paste0(output.folder.paper, "battery_storage_all_var", "_v0", ".png"), grob_storage.plot, width=7, height=5)
 
 
 ```
@@ -1029,10 +1210,10 @@ grid.draw(grob_storage.plot)
 
 scenarios.to.include.mingen <- c("base", "coal_55mingen", "coal_ccgt_0mingen")
 scenarios.labels.mingen <- c("base case - Coal 70% min gen level", "Coal 55% min gen level", "Coal CCGT 0% min gen level")
-linetype_mingen <- c("solid", "dashed", "dotdash")
+linetype_mingen <- c("solid", "dashed", "dashed")
 
 ## Share of VRE
-p_vre_share_mingen <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
+p_vre_share_mingen <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
 # Add vre share without curtailment as a black line
 data.plot.to.add <- results.processed[scenario!="S0W0" & scenario_main == "base", .(scenario_main, scenario, scenario_build, vre_share_nocurt)]
 #setnames(data.plot, c("V4"), c(eval(main_variable)))
@@ -1040,29 +1221,29 @@ data.plot.to.add$scenario <- reorder.factor(data.plot.to.add$scenario, new.order
 
 p_vre_share_mingen_w_noCurt <- p_vre_share_mingen + geom_line(data = data.plot.to.add, aes(scenario, vre_share_nocurt, group = scenario_main), color = "black", size=0.5) +
 facet_wrap(~scenario_build, scales = "free_x") +
-scale_y_continuous(limits = y_limits_vre_share, labels = percent)
+scale_y_continuous(limits = y_limits_vre_share, labels = scales::percent_format(accuracy = 2))
 p_vre_share_mingen_w_noCurt
 
 ## Cost of VRE and storage
-p_vre_mingen <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen,  "Average Cost of VRE", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_vre_mingen <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen,  "Average Cost of VRE", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_vre_mingen
 
 ## Capacity value of VRE
-p_capacity_value_mingen <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen, "Average Capacity Value of VRE", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_capacity_value_mingen <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen, "Average Capacity Value of VRE", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_capacity_value_mingen
 
 
 ## Energy value of VRE
-p_energy_value_mingen <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen, "Average Energy Value of VRE", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_energy_value_mingen <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen, "Average Energy Value of VRE", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_energy_value_mingen
 
 
 ## System additional cost of VRE
-p_sys_cost_mingen <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen, "Average Additional Cost of VRE", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
+p_sys_cost_mingen <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen, "Average Additional Cost of VRE", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
 p_sys_cost_mingen
 
 ## Cost of CO2 emissions mitigation
-p_cost_emissions_avg_mingen <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD7, linetype_mingen, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression((USD/tonne~CO[2])), expression((INR/kg~CO[2])), INR_USD/1000)
+p_cost_emissions_avg_mingen <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.mingen, scenarios.labels.mingen, positions, colors_RD8, linetype_mingen, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression(USD/tonne~CO[2]), expression(INR/kg~CO[2]), INR_USD/1000)
 p_cost_emissions_avg_mingen
 
 ```
@@ -1093,12 +1274,7 @@ grob_mingen.plot <-
 grid.newpage()
 grid.draw(grob_mingen.plot)
 
-#g_storage <- rbind(g_capacity_value_w_storage, g_energy_value_w_storage, size = "first")
-#g_storage$widths <- unit.pmax(g_capacity_value_w_storage$widths, g_energy_value_w_storage$widths)
-#grid.newpage()
-#grid.draw(g_storage)
-
-
+ggsave(file = paste0(output.folder.paper, "min_gen_levels_all_var", "_v0", ".png"), grob_mingen.plot, width=7, height=5)
 
 ```
 
@@ -1106,12 +1282,16 @@ grid.draw(grob_mingen.plot)
 
 ```{r, load modified, echo=FALSE, message = FALSE}
 
-scenarios.to.include.loadMod <- c("base", "load_modD0M0_energyOnly", "load_modD25M25_energyOnly", "load_modD50M0_energyOnly")
-scenarios.labels.loadMod <- c("base case - energy + peak load forecast", "energy forecast", "energy forecast-India 50%-Delhi & Mumbai 25%", "energy forecast-India 50%-Delhi 50%")
-linetype_loadMod <- c("solid", "dashed", rep("dotdash", 2))
+# scenarios.to.include.loadMod <- c("base", "load_modD0M0_energyOnly", "load_modD25M25_energyOnly", "load_modD50M0_energyOnly")
+# scenarios.labels.loadMod <- c("base case - energy + peak load forecast", "energy forecast", "energy forecast-India 50%-Delhi & Mumbai 25%", "energy forecast-India 50%-Delhi 50%")
+# linetype_loadMod <- c("solid", "dashed", rep("dotdash", 2))
+
+scenarios.to.include.loadMod <- c("base", "load_modD25M25_energyOnly", "load_modD50M0_energyOnly")
+scenarios.labels.loadMod <- c("base case forecast-India 100%", "forecast-India 50%-Delhi & Mumbai 25%", "forecast-India 50%-Delhi 50%")
+linetype_loadMod <- c("solid", "dashed", "dashed")
 
 ## Share of VRE
-p_vre_share_loadMod <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
+p_vre_share_loadMod <- plot.facet.allLines(results.processed, "vre_share_after_curt", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod,  "VRE share of total electricity generation", y_limits_vre_share, "", "", INR_USD/1000)
 # Add vre share without curtailment as a black line
 data.plot.to.add <- results.processed[scenario!="S0W0" & scenario_main == "base", .(scenario_main, scenario, scenario_build, vre_share_nocurt)]
 #setnames(data.plot, c("V4"), c(eval(main_variable)))
@@ -1119,29 +1299,29 @@ data.plot.to.add$scenario <- reorder.factor(data.plot.to.add$scenario, new.order
 
 p_vre_share_loadMod_w_noCurt <- p_vre_share_loadMod + geom_line(data = data.plot.to.add, aes(scenario, vre_share_nocurt, group = scenario_main), color = "black", size=0.5) +
 facet_wrap(~scenario_build, scales = "free_x") +
-scale_y_continuous(limits = y_limits_vre_share, labels = percent)
+scale_y_continuous(limits = y_limits_vre_share, labels = scales::percent_format(accuracy = 2))
 p_vre_share_loadMod_w_noCurt
 
 ## Cost of VRE and storage
-p_vre_loadMod <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod,  "Average Cost of VRE", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_vre_loadMod <- plot.facet.allLines(results.processed, "cost_vre_battery_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod,  "Average Cost of VRE", y_limits_vre_cost, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_vre_loadMod
 
 ## Capacity value of VRE
-p_capacity_value_loadMod <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod, "Average Capacity Value of VRE", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_capacity_value_loadMod <- plot.facet.allLines(results.processed, "capacity_value_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod, "Average Capacity Value of VRE", y_limits_capacity_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_capacity_value_loadMod
 
 
 ## Energy value of VRE
-p_energy_value_loadMod <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod, "Average Energy Value of VRE", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
+p_energy_value_loadMod <- plot.facet.allLines(results.processed, "energy_value_pMWh", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod, "Average Energy Value of VRE", y_limits_energy_value, "USD/MWh of VRE", "INR/kWh of VRE", INR_USD/1000)
 p_energy_value_loadMod
 
 
 ## System additional cost of VRE
-p_sys_cost_loadMod <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod, "Average Additional Cost of VRE", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
+p_sys_cost_loadMod <- plot.facet.allLines(results.processed, "system_cost_add_pMWh_load", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod, "Average Additional Cost of VRE", y_limits_sys_cost, "USD/MWh of Load", "INR/kWh of Load", INR_USD/1000)
 p_sys_cost_loadMod
 
 ## Cost of CO2 emissions mitigation
-p_cost_emissions_avg_loadMod <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD7, linetype_loadMod, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression((USD/tonne~CO[2])), expression((INR/kg~CO[2])), INR_USD/1000)
+p_cost_emissions_avg_loadMod <- plot.facet.allLines(results.processed, "cost_emissions_reduction_pTonneCO2_avg", scenarios.to.include.loadMod, scenarios.labels.loadMod, positions, colors_RD8, linetype_loadMod, expression(Cost~of~CO[2]~Emissions~Mitigation), y_limits_cost_emissions, expression(USD/tonne~CO[2]), expression(INR/kg~CO[2]), INR_USD/1000)
 p_cost_emissions_avg_loadMod
 
 ```
@@ -1172,12 +1352,7 @@ grob_loadMod.plot <-
 grid.newpage()
 grid.draw(grob_loadMod.plot)
 
-#g_storage <- rbind(g_capacity_value_w_storage, g_energy_value_w_storage, size = "first")
-#g_storage$widths <- unit.pmax(g_capacity_value_w_storage$widths, g_energy_value_w_storage$widths)
-#grid.newpage()
-#grid.draw(g_storage)
-
-
+ggsave(file = paste0(output.folder.paper, "modified_loads_all_var", "_v0", ".png"), grob_loadMod.plot, width=7, height=5)
 
 ```
 
@@ -1187,13 +1362,17 @@ grid.draw(grob_loadMod.plot)
 
 ## Using the gtable way of plotting panel data. This aligns the plots to the x and y axis when the axis labels and text vary in width or height. 
 
-g_sys_cost <- ggplotGrob(p_sys_cost + theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
+g_sys_cost <- ggplotGrob(p_sys_cost + ggtitle("Wind, solar, and coal costs") + 
+                           theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
 
-g_sys_cost_mingen <- ggplotGrob(p_sys_cost_mingen + theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
+g_sys_cost_mingen <- ggplotGrob(p_sys_cost_mingen + ggtitle("Conventional generator minimum generation levels") + 
+                                  theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
 
-g_sys_cost_w_storage <- ggplotGrob(p_sys_cost_w_storage + theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
+g_sys_cost_w_storage <- ggplotGrob(p_sys_cost_w_storage + ggtitle("Battery storage") + 
+                                     theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
 
-g_sys_cost_loadMod <- ggplotGrob(p_sys_cost_loadMod + theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
+g_sys_cost_loadMod <- ggplotGrob(p_sys_cost_loadMod + ggtitle("Future demand profiles") + 
+                                   theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
 
 grob_sysCost.plot <- 
   arrangeGrob(grobs = 
@@ -1203,10 +1382,68 @@ grob_sysCost.plot <-
 grid.newpage()
 grid.draw(grob_sysCost.plot)
 
-#g_storage <- rbind(g_capacity_value_w_storage, g_energy_value_w_storage, size = "first")
-#g_storage$widths <- unit.pmax(g_capacity_value_w_storage$widths, g_energy_value_w_storage$widths)
-#grid.newpage()
-#grid.draw(g_storage)
+ggsave(file = paste0(output.folder.paper, "add_sys_costs_all_scenarios", "_v0", ".png"), grob_sysCost.plot, width=7, height=5)
+
+```
+
+### Average Emissions Mitigation Costs due to VRE (and Storage) Panel
+
+```{r, average emissions mitigation costs panel, echo=FALSE, message = FALSE}
+
+## Using the gtable way of plotting panel data. This aligns the plots to the x and y axis when the axis labels and text vary in width or height. 
+# See: https://gist.github.com/tomhopper/faa24797bb44addeba79
+
+g_cost_emissions_avg <- ggplotGrob(p_cost_emissions_avg + ggtitle("Wind, solar, and coal costs") + 
+                                     theme(legend.position = c(0, 1), legend.justification = c(0, 1), 
+                                           axis.text.x = element_blank())) 
+
+g_cost_emissions_avg_mingen <- ggplotGrob(p_cost_emissions_avg_mingen + ggtitle("Conventional generator minimum generation levels") +
+                                            theme(legend.position = c(0, 1), legend.justification = c(0, 1), 
+                                                  axis.text.x = element_blank()))
+
+g_cost_emissions_avg_w_storage <- ggplotGrob(p_cost_emissions_avg_w_storage + ggtitle("Battery storage") + 
+                                               theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
+
+g_cost_emissions_avg_loadMod <- ggplotGrob(p_cost_emissions_avg_loadMod + ggtitle("Future demand profiles") + 
+                                             theme(legend.position = c(0, 1), legend.justification = c(0, 1)))
+
+grob_emissionsCost.plot <- 
+  arrangeGrob(grobs = 
+                list(rbind(g_cost_emissions_avg, g_cost_emissions_avg_w_storage, size = "last"), 
+                     rbind(g_cost_emissions_avg_mingen, g_cost_emissions_avg_loadMod, size = "last")), ncol = 2)
+
+grid.newpage()
+grid.draw(grob_emissionsCost.plot)
+
+ggsave(file = paste0(output.folder.paper, "emissions_costs_all_scenarios", "_v0", ".png"), grob_emissionsCost.plot, width=7, height=5)
+
+# Adding VRE split chart as x axis
+
+g_vre_split1 <- ggplotGrob(p_vre_split + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank(), strip.background = element_blank(), strip.text.x = element_blank(), axis.text.y.right = element_blank(), axis.title.y.right = element_text(size = 26), axis.ticks.x.bottom = element_blank(), axis.ticks.y.right = element_blank()))
+
+g_vre_split2 <- ggplotGrob(p_vre_split + labs(y = "") + theme(legend.position = "none", axis.text.x = element_blank(), axis.title.x = element_blank(),strip.background = element_blank(),
+  strip.text.x = element_blank(), axis.text.y.left = element_blank(), axis.title.y.left = element_text(size = 34),  axis.text.y.right = element_blank(), axis.title.y.right = element_text(size = 26), axis.ticks.x.bottom = element_blank(), axis.ticks.y.left = element_blank(), axis.ticks.y.right = element_blank()))
+
+# Remove x labels from plots
+g_cost_emissions_avg_w_storage_no_xlabel <- ggplotGrob(p_cost_emissions_avg_w_storage + ggtitle("Battery storage") + theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
+
+g_cost_emissions_avg_loadMod_no_xlabel <- ggplotGrob(p_cost_emissions_avg_loadMod + ggtitle("Future demand profiles") + theme(legend.position = c(0, 1), legend.justification = c(0, 1), axis.text.x = element_blank()))
+
+
+grob_emissionsCost.plot2 <- 
+  arrangeGrob(grobs = 
+                list(rbind(g_cost_emissions_avg, g_cost_emissions_avg_w_storage_no_xlabel, size = "last"), 
+                     rbind(g_cost_emissions_avg_mingen, g_cost_emissions_avg_loadMod_no_xlabel, size = "last")), ncol = 2)
+
+
+#grid.arrange(grob_emissionsCost.plot2, arrangeGrob(g_vre_split1, g_vre_split2, ncol = 2), heights = c(10, 2))
+
+grob_emissionsCost.plot3 <- arrangeGrob(grob_emissionsCost.plot2, arrangeGrob(cbind(g_vre_split1, g_vre_split2, size = "last")), heights = c(10, 2))
+
+grid.newpage()
+grid.draw(grob_emissionsCost.plot3)
+
+ggsave(file = paste0(output.folder.paper, "emissions_costs_all_scenarios_vre_split", "_v0", ".png"), grob_emissionsCost.plot3, width=7, height=5)
 
 
 
@@ -1312,6 +1549,15 @@ p_buildout
 # Read data from modified load forecasts
 load_india_2030_forecasts <- fread(paste0(input.folder, "load_forecasts/load2030_19EPSmod_all.csv"))
 
+# Label facets
+month_labels <- c("1" = "Jan", "2" = "Feb", "3" = "Mar", "4" = "Apr", 
+                    "5" = "May", "6" = "Jun", "7" = "Jul", "8" = "Aug",
+                    "9" = "Sep", "10" = "Oct", "11" = "Nov", "12" = "Dec")
+
+month_labeller <- function(value){
+  return(month_labels[value])
+}
+
 # Plot functions from the load modification script. 
 #By month and hour (Mean)
 plot_comparison_byMonth_byHour_line <- function(input_data, input_columns, scenarios.labels, yAxisLabel, plot.colors, plot.linetypes){
@@ -1319,10 +1565,12 @@ plot_comparison_byMonth_byHour_line <- function(input_data, input_columns, scena
   data_summary_byMonth_byHour_toPlot <- melt(data_summary_byMonth_byHour, id.vars=c("month", "hour"), measure.vars=input_columns, variable.name="type", value.name="value")
   ggplot(data_summary_byMonth_byHour_toPlot, aes(x = hour, y = value/10^3, color = type, linetype = type)) + 
     geom_line(stat="identity") + 
+    theme_bw() +
     expand_limits(y = 0) +
-    facet_wrap(~month, ncol=4) +
+    facet_wrap(~month, ncol=4, labeller = labeller(month = month_labeller)) +
     labs(y = yAxisLabel, x = "Hour") +
-    theme(legend.position="bottom", legend.title = element_blank()) +
+    theme(legend.position="bottom", legend.title = element_blank(),
+          strip.background = element_rect(color="black", fill="white")) +
     scale_color_manual(labels = scenarios.labels, values = plot.colors) +
     scale_linetype_manual(labels = scenarios.labels, values = plot.linetypes) +
     background_grid()
@@ -1339,6 +1587,7 @@ plot_cum_load_distribution_curves <- function(input_data, input_columns, scenari
   data_to_plot <- melt(input_data_sorted, id.vars=c("Timepoint"), measure.vars=input_columns, variable.name="type", value.name="value")
   ggplot(data_to_plot, aes(x = Timepoint, y = value/10^3, color = type, linetype = type)) + 
     geom_line(stat="identity") + 
+    theme_bw() +
     expand_limits(y = 0) +
     labs(y = yAxisLabel, x = "Hour") +
     theme(legend.position="bottom", legend.title = element_blank()) +
@@ -1357,14 +1606,26 @@ linetype_RD <- c("solid", rep("dashed", 6))
 linetype_RD_dotted <- c("solid", rep("dotted", 6))
 
 #### Load forecast comparison plots
-columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D25_M25_energyPeak", "load_mod_D25_M25_energyOnly", "load_mod_D50_M0_energyPeak", "load_mod_D50_M0_energyOnly")
-labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast", "CEA energy only forecast", "Modified 25% Delhi 25% Mumbai peak+energy", "Modified 25% Delhi 25% Mumbai energy only", "Modified 50% Delhi load peak+energy", "Modified 50% Delhi load energy only")
+# Base case is CEA peak load and energy forecast
+# Difference between base case and load_mod_D0_M0_energyPeak is that I forecasted base case separately for each state and then aggregated the data. For load_mod_D0_M0_energyPeak, I forecasted the total India demand using the India 2014 demand profile. The two curves are very similar. So I am going to plot just one. 
+
+# Compare all the 7 load forecast scenarios
+# columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak", "load_mod_D0_M0_energyOnly", "load_mod_D25_M25_energyPeak", "load_mod_D25_M25_energyOnly", "load_mod_D50_M0_energyPeak", "load_mod_D50_M0_energyOnly")
+# labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast", "CEA energy only forecast", "Modified 25% Delhi 25% Mumbai peak+energy", "Modified 25% Delhi 25% Mumbai energy only", "Modified 50% Delhi load peak+energy", "Modified 50% Delhi load energy only")
+
+# Compare the base case forecast, India + Delhi 25% + Mumbai 25% forecast, and the peakiest India + Delhi 50% forecast
+columns.to.plot <- c("load", "load_mod_D25_M25_energyOnly", "load_mod_D50_M0_energyOnly")
+labels.series <- c("base case forecast-India 100%", "forecast-India 50%-Delhi & Mumbai 25%", "forecast-India 50%-Delhi 50%")
+
+# Compare the base case state-wise forecast with the India aggregate forecast
+# columns.to.plot <- c("load", "load_mod_D0_M0_energyPeak")
+# labels.series <- c("CEA peak load and energy forecast orig", "CEA peak load and energy forecast")
 
 # Month-Hour 12-24 plots of load
-plot_comparison_byMonth_byHour_line(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly average load (GW)", colors_RD7, linetype_RD)
+plot_comparison_byMonth_byHour_line(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly average load (GW)", colors_RD8, linetype_RD)
 
 # Cumulative load distribution curves
-plot_cum_load_distribution_curves(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly load (GW)", colors_RD7, linetype_RD_dotted)
+plot_cum_load_distribution_curves(load_india_2030_forecasts[Day <=365,], columns.to.plot, labels.series, "Hourly load (GW)", colors_RD8, linetype_RD_dotted)
 
 
 
