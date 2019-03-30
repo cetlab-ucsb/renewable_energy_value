@@ -38,7 +38,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "battery60"
+scenario_main = "battery60B50LC_coalHC"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -97,8 +97,8 @@ load_all.set_index('Timepoint', inplace=True)
 
 ## USER SPECIFIED PARAMETERS
 VoLL = 100000 # Value of lost load
-all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no".
-coal_low_cap_cost = 'yes'
+all_new_coal = 'no' # Set this flag to 'yes', if you want all coal capacity ELSE set it "to blank "no". Not used
+coal_low_cap_cost = 'yes' # Not used
 outage_rate_coal = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_gas_ct = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
 outage_rate_gas_ccgt = 0.1 # These outage rates need to match the ones from the conventional buildout algorithm
