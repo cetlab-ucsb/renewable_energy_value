@@ -39,7 +39,7 @@ inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "battery60B50LC_coalHC"
+scenario_main = "coal_55mingen_battery60"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
