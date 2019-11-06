@@ -31,15 +31,15 @@ opt.options["mipgap"] = 0.001 # 0.001 is 0.1%
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-#myPath = "G:\\Electricity_Models\\" 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+myPath = "E:\\Electricity_Models\\" 
+#myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "coal_55mingen_battery60"
+scenario_main = "coal_55mingen_battery60_coalHC"
 yearAnalysis = 2030
 start_day = 1
 end_day = 365
@@ -88,7 +88,8 @@ scenario_build_descriptors = pd.read_csv(inputPath + "scenario_build_descriptors
 ## INPUTS ##
 #############################################
 '''
-scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450","S300W300", "S450W150", "S600W0"] # List of VRE scenarios
+scenarios = ["S450W150", "S600W0"]
+#scenarios = ["S0W0", "S0W200", "S50W150", "S100W100", "S150W50", "S200W0", "S0W300", "S75W225", "S150W150", "S225W75", "S300W0", "S0W400", "S100W300", "S200W200", "S300W100", "S400W0", "S0W600", "S150W450","S300W300", "S450W150", "S600W0"] # List of VRE scenarios
 
 ## Load
 load = pd.read_csv(inputPathLoadForecasts + load_csv, sep=',')
