@@ -32,16 +32,15 @@ library(scales)
 
 ## INPUTS TO SCRIPT ##############################################################################################
 
-working.directory <- "G:/SWITCH/india_ED/"
-input.folder <- "india_ED_input/"
-output.folder <- "india_ED_output/"
+input.folder <- "../india_REV_input/"
+output.folder <- "../india_REV_output/"
 results.folder <- "results/processed_results_coalLC/"
 input.results.fname <- "results_all_scenarios_lowCapCostCoal_55min_07282017.csv"
 screening.curve.plot.fname <- "screening_curve_plot.csv"
 INR_USD = 65
 
 ## Set working directory ##
-setwd(working.directory)
+setwd('/Users/ranjitster/Dropbox/renewable_energy_value/renewable_energy_value/scripts/')
 
 # -----------------------------------------------------------------------------|
 # FUNCTION TO GRAB LEGEND

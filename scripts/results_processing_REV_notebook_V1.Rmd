@@ -2153,8 +2153,28 @@ grid.draw(grob_emissionsCost.plot4)
 #ggsave(file = paste0(output.folder.paper, "emissions_costs_all_scenarios", "_v1", ".png"), grob_emissionsCost.plot, width=7, height=5)
 # ggsave(file = paste0(output.folder.paper, "emissions_costs_all_scenarios_vre_split", "_v1", ".png"), grob_emissionsCost.plot4, width=7, height=5)
 
+## Vertical plot
+gA=ggplot_gtable(ggplot_build(p_cost_emissions_avg1))
+gB=ggplot_gtable(ggplot_build(p_cost_emissions_avg_mingen1))
+gC=ggplot_gtable(ggplot_build(p_cost_emissions_avg_w_storage_no_xlabel))
+gD=ggplot_gtable(ggplot_build(p_cost_emissions_avg_loadMod_no_xlabel))
+gE=ggplot_gtable(ggplot_build(p_vre_split1))
+gF=ggplot_gtable(ggplot_build(p_vre_split1))
 
+maxWidth = grid::unit.pmax(gA$widths, gB$widths, gC$widths, gD$widths, gE$widths, gF$widths)
+gA$widths <- as.list(maxWidth)
+gB$widths <- as.list(maxWidth)
+gC$widths <- as.list(maxWidth)
+gD$widths <- as.list(maxWidth)
+gE$widths <- as.list(maxWidth)
+gF$widths <- as.list(maxWidth)
 
+grob_emissionsCost.plot5 <- arrangeGrob(arrangeGrob(gA,gB,gC,gD,gE,nrow=5,heights=c(.5, .5, .5, .5, .25)), plot.legend.vre.split, nrow = 2, heights=c(20,0.5))
+
+grid.newpage()
+grid.draw(grob_emissionsCost.plot5)
+
+#ggsave(file = paste0(output.folder.paper, "emissions_costs_all_scenarios_vre_split_vertical", "_v1", ".png"), grob_emissionsCost.plot5, width=4, height=9)
 ```
 
 

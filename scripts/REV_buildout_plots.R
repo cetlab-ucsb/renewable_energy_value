@@ -108,4 +108,4 @@ grob_new_buildout.plot <- arrangeGrob(grobs = list(rbind(g_buildout_new_conv, g_
 grid.newpage()
 grid.draw(grob_new_buildout.plot)
 
-ggsave(file = paste0(output.folder.paper, "new_buildout_", scenarios.function[sc.func], "_v0", ".png"), grob_new_buildout.plot, width=6, height=4)
+# ggsave(file = paste0(output.folder.paper, "new_buildout_", scenarios.function[sc.func], "_v0", ".png"), grob_new_buildout.plot, width=6, height=4)
