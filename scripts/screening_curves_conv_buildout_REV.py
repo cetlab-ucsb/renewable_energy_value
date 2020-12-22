@@ -29,15 +29,14 @@ print start_time
 ## IMPORTING DATA - CSVS AND PATH ##
 #############################################
 '''
-#myPath = "E:\\Electricity_Models\\" 
-myPath = "C:\\Users\\akjohnson\\Desktop\\Ranjit\\"
+myPath = "E:\\Electricity_Models\\" 
 inputPath = myPath + "renewable_energy_value\\india_REV_input\\"
 # Ana note: for Mac, will probably work on Windows
 # inputPath = os.path.join(os.getcwd(), "india_ED_input/")
 # inputPathVRE = os.path.join(os.getcwd(), "india_ED_input/")
 
 ### SPECIFY SCENARIO
-scenario_main = "battery60B50LC_coalHC"
+scenario_main = "hydro_high_cea_nuclear17"
 yearAnalysis = 2030
 
 ### INPUT SCENARIO CSV
@@ -63,7 +62,10 @@ inputPathLoadForecasts = inputPath + "load_forecasts\\"
 yearBase = inputScenario.loc['load_year'][scenario_main]
 load_modifier = inputScenario.loc['load_modified_suffix'][scenario_main][1:]
 load_csv = "load" + str(yearAnalysis) + "_19EPS" + load_modifier + ".csv" # Load CSV
-genALL_input_csv = "gen_all_input_cc_ccgt_diesel.csv" # generator csv with var cost and max capacity for all generators
+hydro_modifier = inputScenario.loc['hydro_energy_mod_suffix'][scenario_main]
+nuclear_modifier = inputScenario.loc['nuclear_cap_suffix'][scenario_main]
+gen_modifier = hydro_modifier + nuclear_modifier
+genALL_input_csv = "gen_all_input_cc_ccgt_diesel" + gen_modifier + ".csv" # generator csv with var cost and max capacity for all generators
 genNEWCOAL_csv = "gen_new_coal_input.csv" # List of new coal plants, change the file name for high cost coal until you make a generic script
 genNEWGASCT_csv = "gen_new_gas_ct_input.csv" # List of new CT gas plants
 genNEWGASCCGT_csv = "gen_new_gas_ccgt_input.csv" # List of new CCGT gas plants
