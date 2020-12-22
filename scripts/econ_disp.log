@@ -1,0 +1,82 @@
+Solver command line: ['C:\\Program Files\\IBM\\ILOG\\CPLEX_Studio126\\cplex\\bin\\x64_win64\\cplex.exe']
+
+
+Welcome to IBM(R) ILOG(R) CPLEX(R) Interactive Optimizer 12.6.0.0
+  with Simplex, Mixed Integer & Barrier Optimizers
+5725-A06 5725-A29 5724-Y48 5724-Y49 5724-Y54 5724-Y55 5655-Y21
+Copyright IBM Corp. 1988, 2013.  All Rights Reserved.
+
+Type 'help' for a list of available commands.
+Type 'help' followed by a command name for more
+information on commands.
+
+CPLEX> Logfile 'cplex.log' closed.
+Logfile 'econ_disp.log' open.
+CPLEX> New value for mixed integer optimality gap tolerance: 0.001
+CPLEX> Problem 'c:\users\ranjit\appdata\local\temp\tmp6xgob_.pyomo.lp' read.
+Read time = 0.12 sec. (6.46 ticks)
+CPLEX> Problem name: c:\users\ranjit\appdata\local\temp\tmp6xgob_.pyomo.lp
+Variables            :   35419  [Nneg: 33962,  Binary: 1457]
+Objective nonzeros   :   33768
+Linear constraints   :   62716  [Less: 62568,  Greater: 24,  Equal: 124]
+  Nonzeros           :  159123
+  RHS nonzeros       :     157
+
+Variables            : Min LB: 0.0000000        Max UB: 1.000000       
+Objective nonzeros   : Min   : 590.0000         Max   : 100000.0       
+Linear constraints   :
+  Nonzeros           : Min   : 0.8500000        Max   : 600051.0       
+  RHS nonzeros       : Min   : 1.000000         Max   : 351159.4       
+CPLEX> Tried aggregator 1 time.
+MIP Presolve eliminated 17476 rows and 9922 columns.
+MIP Presolve modified 5950 coefficients.
+Reduced MIP has 45240 rows, 25497 columns, and 114766 nonzeros.
+Reduced MIP has 1190 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.22 sec. (88.22 ticks)
+Found incumbent of value 4.7914826e+011 after 0.33 sec. (139.70 ticks)
+Probing time = 0.30 sec. (11.90 ticks)
+Tried aggregator 1 time.
+Reduced MIP has 45240 rows, 25497 columns, and 114766 nonzeros.
+Reduced MIP has 1190 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.14 sec. (60.51 ticks)
+Probing time = 0.36 sec. (11.86 ticks)
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 4 threads.
+Root relaxation solution time = 4.34 sec. (2200.77 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                      4.79148e+011  7.06155e+008       29   99.85%
+*     0+    0                      1.28352e+010  7.06155e+008       29   94.50%
+      0     0  1.06378e+010     1  1.28352e+010  1.06378e+010       29   17.12%
+      0     0  1.06378e+010     2  1.28352e+010    MIRcuts: 2       30   17.12%
+      0     2  1.06378e+010     2  1.28352e+010  1.06378e+010       30   17.12%
+Elapsed time = 13.07 sec. (6423.67 ticks, tree = 0.01 MB, solutions = 2)
+     16    18  1.06378e+010     1  1.28352e+010  1.06378e+010      571   17.12%
+     31    33  1.06380e+010     1  1.28352e+010  1.06378e+010     1671   17.12%
+*    41+   40                      1.06380e+010  1.06378e+010     2837    0.00%
+     49    48  1.06381e+010     1  1.06380e+010  1.06378e+010     3250    0.00%
+*    51+   35                      1.06379e+010  1.06378e+010     3252    0.00%
+
+Mixed integer rounding cuts applied:  2
+
+Root node processing (before b&c):
+  Real time             =   13.00 sec. (6398.32 ticks)
+Parallel b&c, 4 threads:
+  Real time             =    4.41 sec. (1795.18 ticks)
+  Sync time (average)   =    1.01 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =   17.41 sec. (8193.50 ticks)
+
+Solution pool: 6 solutions saved.
+
+MIP - Integer optimal, tolerance (0.001/1e-006):  Objective = 1.0637850165e+010
+Current MIP best bound = 1.0637841151e+010 (gap = 9013.26, 0.00%)
+Solution time =   17.41 sec.  Iterations = 3252  Nodes = 51 (3)
+Deterministic time = 8193.60 ticks  (470.63 ticks/sec)
+
+CPLEX> Incumbent solution written to file 'c:\users\ranjit\appdata\local\temp\tmpsmyry0.cplex.sol'.
+CPLEX> 
