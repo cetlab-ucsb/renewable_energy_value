@@ -14,4 +14,5 @@ RD_*
 **/*_cache
 ._~$*
 ._*
-india_data
+scripts/.Rapp.history
+scripts/*.log

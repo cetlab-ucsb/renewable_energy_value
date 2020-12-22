@@ -1,8 +1,0 @@
-generator,gen_capacity,var_cost,type
-Coal1,15,2,coal
-Coal2,50,3,coal
-Hydro1,20,0,hydro
-Nuclear1,10,1,mustrun
-RoR1,5,0,mustrun
-Other1,3,5,other
-Gas1,5,4,gas

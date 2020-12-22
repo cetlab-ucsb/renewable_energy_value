@@ -1,0 +1,5 @@
+scenario,storage,stor_capacity,stor_energy,efficiency,var_cost,type
+bat0,BAT-STORAGE,0,0,0.85,0.1,bat_storage
+bat15,BAT-STORAGE,15000,60000,0.85,0.1,bat_storage
+bat30,BAT-STORAGE,30000,120000,0.85,0.1,bat_storage
+bat60,BAT-STORAGE,60000,240000,0.85,0.1,bat_storage
