@@ -1,3 +1,0 @@
-technology,cap_cost_vre_base,cap_cost_vre_low_10pc,cap_cost_solar_low_10pc,cap_cost_wind_low_10pc,cap_cost_vre_low_20pc,cap_cost_solar_low_20pc,cap_cost_wind_low_20pc,annualized_fc_vre_base,annualized_fc_vre_low_10pc,annualized_fc_solar_low_10pc,annualized_fc_wind_low_10pc,annualized_fc_vre_low_20pc,annualized_fc_solar_low_20pc,annualized_fc_wind_low_20pc
-wind,1230,1107,1230,1107,984,1230,984,179,165,179,165,150,179,150
-solarPV,1030,927,927,1030,824,824,1030,146,133,133,146,121,121,146
